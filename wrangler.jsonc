@@ -1,0 +1,12 @@
+// developers.sedumo.com on Cloudflare Workers with static assets (`npm run build:cloudflare`, then `npx wrangler
+// deploy`). A copy of this repo that deploys to its own Cloudflare account changes the name and the route.
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "sedumo-developers",
+	"compatibility_date": "2026-11-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"workers_dev": false,
+	"preview_urls": false,
+	"routes": [{ "pattern": "developers.sedumo.com", "custom_domain": true }],
+	"observability": { "enabled": true }
+}

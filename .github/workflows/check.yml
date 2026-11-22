@@ -1,0 +1,28 @@
+# Every pull request and push: types, tests and both builds. Sedumo's manual is fetched when the repo has the key to
+# read it (SEDUMO_DOCS_KEY); a pull request from a copy of this repo builds without the guides, as a copy does.
+name: Check
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Fetch Sedumo's manual
+        env:
+          SEDUMO_DOCS_KEY: ${{ secrets.SEDUMO_DOCS_KEY }}
+        run: bash scripts/fetch-manual.sh
+      - run: npm ci
+      - run: npm run guides
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:cloudflare

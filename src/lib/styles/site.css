@@ -1,0 +1,112 @@
+/* developers.sedumo.com. The header is sedumo.com's deep green in both themes; pages are on the brand's paper, with
+   its green for links. Colours come from the brand's tokens.css (copied unchanged from Sedumo's brand library). */
+:root {
+	--ground: #22503f;
+	--ground-deep: #1b4233;
+	--on-ground: #f3f6f2;
+	--on-ground-muted: #bcd3c6;
+	--paper: var(--sedumo-paper);
+	--ink: var(--sedumo-ink);
+	--muted: #56605a;
+	--line: #dbe3de;
+	--sunken: #eceee9;
+	--link: var(--sedumo-green);
+	--soft: var(--sedumo-track);
+	--display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+	--body: 'Segoe UI', system-ui, -apple-system, sans-serif;
+	--mono: ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+	color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		--muted: #a9b5ae;
+		--line: #2a3a33;
+		--sunken: #1a221e;
+		--link: #9ccbb2;
+	}
+}
+* {
+	box-sizing: border-box;
+}
+html {
+	background: var(--paper);
+}
+body {
+	margin: 0;
+	background: var(--paper);
+	color: var(--ink);
+	font: 16px/1.6 var(--body);
+	overflow-x: hidden;
+}
+a {
+	color: var(--link);
+	text-underline-offset: 2px;
+}
+:focus-visible {
+	outline: 2px solid var(--link);
+	outline-offset: 2px;
+	border-radius: 3px;
+}
+h1,
+h2,
+h3 {
+	font-family: var(--display);
+	font-weight: 700;
+	letter-spacing: -0.02em;
+	line-height: 1.2;
+	text-wrap: balance;
+}
+h1 {
+	font-size: clamp(1.9rem, 4vw, 2.6rem);
+	margin: 0 0 0.75rem;
+}
+h2 {
+	font-size: 1.5rem;
+	margin: 2.5rem 0 0.75rem;
+}
+h3 {
+	font-size: 1.15rem;
+	margin: 1.75rem 0 0.5rem;
+}
+code {
+	font: 0.875em var(--mono);
+	background: var(--sunken);
+	border-radius: 4px;
+	padding: 0.1em 0.3em;
+}
+pre {
+	background: var(--sunken);
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	padding: 0.9rem 1rem;
+	overflow-x: auto;
+	line-height: 1.45;
+}
+pre code {
+	background: none;
+	padding: 0;
+	font-size: 0.85rem;
+}
+.lead {
+	font-size: 1.15rem;
+	color: var(--muted);
+	max-width: 42rem;
+}
+.table {
+	overflow-x: auto;
+	margin: 1rem 0;
+}
+table {
+	border-collapse: collapse;
+	font-size: 0.92rem;
+}
+th,
+td {
+	border-bottom: 1px solid var(--line);
+	padding: 0.45rem 0.75rem 0.45rem 0;
+	text-align: left;
+	vertical-align: top;
+}
+th {
+	font-weight: 600;
+}
