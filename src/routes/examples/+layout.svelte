@@ -7,6 +7,15 @@
 
 <div class="examples">
 	<nav aria-label="Examples">
+		<p class="account">
+			{#if page.data.ownAccount}
+				Printing on <strong>your account</strong>
+				<a href="/account?from={encodeURIComponent(page.url.pathname)}">Change</a>
+			{:else}
+				Printing on <strong>the demo</strong>
+				<a href="/account?from={encodeURIComponent(page.url.pathname)}">Use my account</a>
+			{/if}
+		</p>
 		{#each GROUPS as group (group)}
 			<h2>{group}</h2>
 			<ul>
@@ -33,6 +42,20 @@
 </div>
 
 <style>
+	.account {
+		margin: 0 0 1.25rem;
+		padding: 0.5rem 0.75rem;
+		border-radius: 8px;
+		background: var(--sunken);
+		font-size: 0.9rem;
+	}
+	.account a {
+		display: inline;
+		padding: 0;
+		border: 0;
+		color: var(--link);
+		text-decoration: underline;
+	}
 	.examples {
 		max-width: 90rem;
 		margin: 0 auto;

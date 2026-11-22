@@ -6,6 +6,8 @@ internals.
 
 - **The guides' text is Sedumo's manual**, fetched when the site is built (`npm run guides`). Never edit it here; a
   fix goes into Sedumo's manual.
+- **A developer's own token** (`/account`) is in the cookie `sedumo_account_token` (`HttpOnly`): read only in
+  `src/lib/server/env.ts`, sent only to Sedumo, never logged (Cloudflare's invocation logs stay off: they keep headers).
 - **Sedumo's token stays on the server** (`src/lib/server/`, `$app/env/private`): never in the browser, a response or
   a log. The examples may show Sedumo's answers (they never carry the token); the server takes from the browser only
   what a page sends (`requestProblem`).
