@@ -34,5 +34,6 @@
 	pre {
 		margin: 0;
 		max-height: 28rem;
+		tab-size: 4;
 	}
 </style>

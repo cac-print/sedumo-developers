@@ -28,3 +28,28 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run build:cloudflare
+  # The code the examples show, in every language but ABAP: each program runs and must send exactly the page's request
+  # (scripts/run-code.ts, against a local server; no token needed).
+  code:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '8.0.x'
+      - run: python3 --version && php --version | head -1
+      - run: node scripts/run-code.ts
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+          DOTNET_NOLOGO: '1'

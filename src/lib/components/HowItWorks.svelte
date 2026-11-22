@@ -1,9 +1,11 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Code from './Code.svelte';
-	import { curlFor, type PrintRequest } from '#lib/print-request.ts';
+	import RequestCode from './RequestCode.svelte';
+	import type { PrintRequest } from '#lib/print-request.ts';
 
-	// The right column of an example: when to use it, the request as curl, Sedumo's answer, and following the print.
+	// The right column of an example: when to use it, the request in the reader's language, Sedumo's answer, and
+	// following the print.
 	let {
 		request,
 		answer,
@@ -30,7 +32,7 @@
 {@render intro()}
 
 <h3>The request</h3>
-{#if request}<Code code={curlFor(request, '/print', apiUrl, headers)} label="the request" />{/if}
+{#if request}<RequestCode {request} {apiUrl} {headers} />{/if}
 {#if notes}<div class="small">{@render notes()}</div>{/if}
 
 <h3>What comes back</h3>
