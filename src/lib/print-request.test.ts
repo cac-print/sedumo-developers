@@ -1,0 +1,52 @@
+import { describe, expect, it } from 'vitest';
+import { cleanRequest, curlFor, requestProblem } from './print-request.ts';
+
+const base = { document: { path: 'Product label.template' }, printerId: 'p1', data: { values: { lot: 'L1' } } };
+
+describe('cleanRequest', () => {
+	it('leaves out what isn’t set', () => {
+		expect(cleanRequest({ ...base, data: { values: { lot: 'L1' }, copies: 1 }, onBehalfOf: { id: 'a', name: '' }, settings: {} })).toEqual(base);
+	});
+	it('keeps copies above one, who prints and the settings given', () => {
+		const request = cleanRequest({
+			...base,
+			data: { values: { lot: 'L1' }, copies: 3 },
+			onBehalfOf: { id: 'a1', name: 'Ana Novak' },
+			settings: { darkness: 25, speedMmS: undefined }
+		});
+		expect(request.data.copies).toBe(3);
+		expect(request.onBehalfOf).toEqual({ id: 'a1', name: 'Ana Novak' });
+		expect(request.settings).toEqual({ darkness: 25 });
+	});
+});
+
+describe('cleanRequest, emptied fields', () => {
+	it('leaves out a setting whose field was emptied (null)', () => {
+		const settings = { darkness: null, speedMmS: 51 } as unknown as { darkness?: number; speedMmS?: number };
+		expect(cleanRequest({ ...base, settings }).settings).toEqual({ speedMmS: 51 });
+	});
+});
+
+describe('requestProblem', () => {
+	it('lets a normal request through', () => {
+		expect(requestProblem({ ...base, data: { values: { lot: 'L1' }, copies: 2 } })).toBeNull();
+	});
+	it('stops too many copies, long values and odd shapes', () => {
+		expect(requestProblem({ ...base, data: { values: {}, copies: 100000 } })).toMatch(/copies/);
+		expect(requestProblem({ ...base, data: { values: { a: 'x'.repeat(501) } } })).toMatch(/characters/);
+		expect(requestProblem({ ...base, document: { id: 'a', path: 'b' } })).toMatch(/one document/);
+		expect(requestProblem('x')).toMatch(/Not a print request/);
+	});
+});
+
+describe('curlFor', () => {
+	it('is a curl command with the token from the environment and the JSON body', () => {
+		const curl = curlFor(base);
+		expect(curl).toContain('curl https://api.sedumo.com/print');
+		expect(curl).toContain('Bearer $SEDUMO_TOKEN');
+		expect(curl).toContain('"path": "Product label.template"');
+	});
+	it('escapes a single quote in a value for the shell', () => {
+		expect(curlFor({ ...base, data: { values: { name: "O'Brien" } } })).toContain(`O'\\''Brien`);
+	});
+});
