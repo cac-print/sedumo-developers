@@ -161,7 +161,7 @@ function cleanData(data: PrintData): PrintData {
 }
 
 /** The request as curl prints it, with the token from $SEDUMO_TOKEN. */
-export function curlFor(request: PrintRequest, path = '/print', apiUrl = API_URL): string {
+export function curlFor(request: PrintRequest, path = '/print', apiUrl = API_URL, headers: Record<string, string> = {}): string {
 	// A long file (a PDF's base64) is shortened, so the command stays readable; the request sends all of it.
 	const document = request.document;
 	const shown =
@@ -173,6 +173,7 @@ export function curlFor(request: PrintRequest, path = '/print', apiUrl = API_URL
 		`curl ${apiUrl}${path} \\`,
 		`  -H "Authorization: Bearer $SEDUMO_TOKEN" \\`,
 		`  -H "Content-Type: application/json" \\`,
+		...Object.entries(headers).map(([name, value]) => `  -H "${name}: ${value}" \\`),
 		`  -d '${body}'`
 	].join('\n');
 }

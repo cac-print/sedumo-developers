@@ -27,8 +27,9 @@ export type Variable = {
 
 export type Template = { name: string; size: { widthMm: number; heightMm: number }; variables: Variable[] };
 
-/** Sedumo's answer as it came: the status and the JSON, to show what an app gets back. */
-export type Answer = { status: number; body: unknown };
+/** Sedumo's answer as it came: the status and the JSON, to show what an app gets back; `replayed` when Sedumo
+ * answered a retry with the first answer (`Idempotent-Replayed: true`). */
+export type Answer = { status: number; body: unknown; replayed?: boolean };
 
 export class SedumoError extends Error {
 	constructor(
@@ -45,12 +46,13 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 	if (!token) throw new Error('SEDUMO_TOKEN is not set');
 	const base = apiUrl.replace(/\/+$/, '');
 
-	async function send(method: 'GET' | 'POST', path: string, body?: unknown): Promise<Response> {
+	async function send(method: 'GET' | 'POST', path: string, body?: unknown, headers: Record<string, string> = {}): Promise<Response> {
 		const response = await fetchImpl(`${base}${path}`, {
 			method,
 			headers: {
 				Authorization: `Bearer ${token}`,
-				...(body === undefined ? {} : { 'Content-Type': 'application/json' })
+				...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+				...headers
 			},
 			body: body === undefined ? undefined : JSON.stringify(body)
 		});
@@ -85,11 +87,15 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 				.sort((a, b) => a.path.localeCompare(b.path)),
 		readTemplate: async (id: string) =>
 			(await call<{ template: Template }>('GET', `/designer/templates/${encodeURIComponent(id)}`)).template,
-		/** The one print action: a document, a printer and data. Refusals come back as an answer, not an error. */
-		print: async (request: PrintRequest): Promise<Answer> => {
+		/**
+		 * The one print action: a document, a printer and data. Refusals come back as an answer, not an error. With an
+		 * idempotency key, the same request sent again within 24 hours gets the first answer and prints nothing more.
+		 */
+		print: async (request: PrintRequest, idempotencyKey?: string): Promise<Answer> => {
 			try {
-				const response = await send('POST', '/print', request);
-				return { status: response.status, body: await response.json() };
+				const response = await send('POST', '/print', request, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {});
+				const replayed = response.headers.get('Idempotent-Replayed') === 'true';
+				return { status: response.status, body: await response.json(), ...(replayed ? { replayed } : {}) };
 			} catch (error) {
 				if (error instanceof SedumoError && error.status < 500) return { status: error.status, body: error.body };
 				throw error;

@@ -8,5 +8,8 @@ export const POST = async ({ request }) => {
 	const body = await request.json().catch(() => null);
 	const problem = requestProblem(body);
 	if (problem) return json({ message: problem }, { status: 400 });
-	return json(await sedumo().print(cleanRequest(body as PrintRequest)));
+	// A key of the page's (1 to 200 visible characters), passed on as Sedumo's Idempotency-Key.
+	const key = request.headers.get('idempotency-key') ?? undefined;
+	if (key !== undefined && !/^[\x21-\x7e]{1,200}$/.test(key)) return json({ message: 'Not an idempotency key' }, { status: 400 });
+	return json(await sedumo().print(cleanRequest(body as PrintRequest), key));
 };
