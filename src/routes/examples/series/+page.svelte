@@ -53,7 +53,8 @@
 				step: Number(c.step) || 0,
 				every: Math.max(1, Number(c.every) || 1),
 				width: Math.min(Math.max(Number(c.width) || 0, 0), 20)
-			}))
+			})),
+			LIMITS.copies
 		)
 	);
 	const documentRef = $derived<DocumentRef | null>(
@@ -90,7 +91,9 @@
 			{#each counters as counter, i (i)}
 				<div class="counter">
 					<label>Field
-						<select bind:value={counter.name}>{#each names as n (n)}<option value={n}>{n}</option>{/each}</select>
+						<select bind:value={counter.name}>
+							{#each names.filter((n) => n === counter.name || !counters.some((c) => c.name === n)) as n (n)}<option value={n}>{n}</option>{/each}
+						</select>
 					</label>
 					<label>From <input type="number" bind:value={counter.from} /></label>
 					<label>Step <input type="number" bind:value={counter.step} /></label>

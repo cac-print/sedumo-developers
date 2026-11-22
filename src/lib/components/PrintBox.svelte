@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Preview from './Preview.svelte';
 	import PrintStatus from './PrintStatus.svelte';
-	import type { PrintRequest } from '#lib/print-request.ts';
+	import { requestProblem, type PrintRequest } from '#lib/print-request.ts';
 
 	type Answer = { status: number; body: { jobId?: string; message?: unknown } & Record<string, unknown> };
 	// The preview, Print, and what happened: Sedumo's refusal with its reason, or the print's status until it's done.
@@ -17,9 +17,13 @@
 		lastStatus?: unknown;
 	} = $props();
 
+	// Past the demo's limits: said here, and neither previewed nor sent.
+	const problem = $derived(request ? requestProblem(request) : null);
+	const sendable = $derived(problem ? null : request);
+
 	let sending = $state(false);
 	async function print() {
-		if (!request) return;
+		if (!sendable) return;
 		sending = true;
 		answer = null;
 		lastStatus = null;
@@ -27,7 +31,7 @@
 			const response = await fetch('/examples/print', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(request)
+				body: JSON.stringify(sendable)
 			});
 			answer = await response.json().then(
 				(body) => (response.ok ? body : { status: response.status, body }),
@@ -42,9 +46,10 @@
 	const jobId = $derived(answer?.status === 201 ? answer.body.jobId : undefined);
 </script>
 
-<Preview {request} {size} />
+{#if problem}<p class="refused">{problem}</p>{/if}
+<Preview request={sendable} {size} />
 
-<button class="print" type="button" disabled={!request || sending} onclick={print}>{sending ? 'Sending…' : 'Print'}</button>
+<button class="print" type="button" disabled={!sendable || sending} onclick={print}>{sending ? 'Sending…' : 'Print'}</button>
 
 {#if answer && answer.status !== 201}
 	<p class="refused" role="alert"><strong>Refused ({answer.status})</strong>: {String(answer.body.message ?? 'see the answer')}</p>
