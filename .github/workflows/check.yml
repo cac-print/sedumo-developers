@@ -28,8 +28,9 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run build:cloudflare
-  # The code the examples show, in every language but ABAP: each program runs and must send exactly the page's request
-  # (scripts/run-code.ts, against a local server; no token needed).
+  # The code the examples show, in every language that runs on its own: each program must send exactly the page's
+  # request (scripts/run-code.ts, against a local server), then print on Sedumo's test copy, when the repo has a token
+  # for it (SEDUMO_STAGING_TOKEN; a pull request from a copy of this repo gets none and runs the local check only).
   code:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -54,3 +55,5 @@ jobs:
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: '1'
           DOTNET_NOLOGO: '1'
+          SEDUMO_TOKEN: ${{ secrets.SEDUMO_STAGING_TOKEN }}
+          SEDUMO_API_URL: ${{ vars.SEDUMO_STAGING_API_URL }}

@@ -46,7 +46,8 @@ Each example shows its request in curl, C#, VB.NET, Java, Python, Node.js, PHP, 
 that runs inside an application in ABAP (SAP), X++ (Dynamics 365 Finance and Operations), AL (Business Central) and
 Excel VBA (`src/lib/code.ts`), made from the same request the page sends. `node scripts/run-code.ts` runs every one
 that runs on its own and checks that each sends exactly that request, to a local server; with `SEDUMO_TOKEN` (and
-`SEDUMO_API_URL`) also against Sedumo, where each print must be queued. It uses each language's own tools, or with
+`SEDUMO_API_URL`) also against Sedumo, where each print must be queued. CI does both, the second with the repo's
+`SEDUMO_STAGING_TOKEN` on a test copy of Sedumo. It uses each language's own tools, or with
 `--docker` their official images.
 
 ## Search

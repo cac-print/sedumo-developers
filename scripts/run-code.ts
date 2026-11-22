@@ -19,8 +19,9 @@ import type { PrintRequest } from '../src/lib/print-request.ts';
 const args = process.argv.slice(2);
 const docker = args.includes('--docker');
 const chosen = args.filter((a) => !a.startsWith('--'));
-const apiUrl = (process.env.SEDUMO_API_URL ?? 'https://api.sedumo.com').replace(/\/+$/, '');
-const token = process.env.SEDUMO_TOKEN;
+// An empty value is no value: CI passes a secret that a pull request from a copy of this repo doesn't get.
+const apiUrl = (process.env.SEDUMO_API_URL || 'https://api.sedumo.com').replace(/\/+$/, '');
+const token = process.env.SEDUMO_TOKEN || undefined;
 
 // How each program runs: its file, the command, and the Docker image for --docker.
 type How = { file: string; command: string[]; image: string; project?: { file: string; text: string } };
