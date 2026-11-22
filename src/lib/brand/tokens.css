@@ -1,0 +1,23 @@
+/* Sedumo brand colours */
+:root {
+  --sedumo-green: #2f6b57; /* ring, primary */
+  --sedumo-leaf: #6fa58a; /* leaf */
+  --sedumo-coral: #c4655a; /* error / failed */
+  --sedumo-amber: #c8902e; /* warning */
+  --sedumo-grey: #8e9893; /* offline */
+  --sedumo-ink: #1d2621; /* wordmark letters */
+  --sedumo-paper: #f6f7f4; /* light background */
+  --sedumo-track: #dbe7e0; /* progress track */
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sedumo-green: #5fa287;
+    --sedumo-leaf: #9ccbb2;
+    --sedumo-coral: #d9806f;
+    --sedumo-amber: #d9a64a;
+    --sedumo-grey: #8b958f;
+    --sedumo-ink: #f3f5f2;
+    --sedumo-paper: #121815;
+    --sedumo-track: #263731;
+  }
+}

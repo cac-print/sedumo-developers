@@ -1,0 +1,7 @@
+# Headers for every file Cloudflare serves. Each page carries its own content security policy (vite.config.ts); what a
+# page can't set for itself is here.
+/*
+  Content-Security-Policy: frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
