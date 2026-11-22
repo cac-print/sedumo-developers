@@ -397,8 +397,8 @@ function xpp(parts: Parts): string {
 		.join('');
 	const file = pdf
 		? `
-        // The PDF as bytes, from your report or document.
-        System.Byte[] pdf;
+        // The PDF's bytes: here from a file; in your solution, from your report or document.
+        System.Byte[] pdf = System.IO.File::ReadAllBytes(@'C:\Temp\${PDF_FILE}');
         request = strReplace(request, ${xppText(PDF_MARK)}, System.Convert::ToBase64String(pdf));
 `
 		: '';
@@ -411,15 +411,18 @@ internal final class SedumoPrint
         str token = 'your Sedumo API token';
         str request = @'${json}';
 ${file}
-        System.Net.Http.HttpClient client = new System.Net.Http.HttpClient();
+        // Not "client": a word X++ keeps for itself.
+        System.Net.Http.HttpClient httpClient = new System.Net.Http.HttpClient();
         System.Net.Http.HttpRequestMessage message = new System.Net.Http.HttpRequestMessage(
             new System.Net.Http.HttpMethod('POST'), ${xppText(url)});
         message.Headers.Add('Authorization', 'Bearer ' + token);
 ${header}        message.Content = new System.Net.Http.StringContent(request, System.Text.Encoding::get_UTF8(), 'application/json');
-        System.Net.Http.HttpResponseMessage response = client.SendAsync(message).Result;
+        System.Net.Http.HttpResponseMessage response = httpClient.SendAsync(message).Result;
         str answer = response.Content.ReadAsStringAsync().Result;
+        // The status as a number (201), not its .NET name (Created).
+        int status = response.StatusCode;
         // 201: queued, with its jobId. Otherwise Sedumo says why in the answer.
-        info(strFmt('%1 %2', response.StatusCode, answer));
+        info(strFmt('%1 %2', status, answer));
     }
 }
 `;
