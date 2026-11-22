@@ -46,8 +46,9 @@ These are the things an integration most often gets wrong. Each one costs a repr
    the internet, send the request to the worker (`http://127.0.0.1:7647`, or its address on the plant network) only
    when the cloud **can't be reached at all** (the connection is refused, the name doesn't resolve). After a timeout
    the cloud may have queued the print: retry the cloud with the same key instead. The cloud and each worker keep their
-   own Idempotency-Keys, so a print sent to both prints twice. The token must be made valid on workers too, and the
-   worker prints only labels it already has.
+   own Idempotency-Keys, so a print sent to both prints twice. Two answers queue nothing, so the worker may take those
+   prints too: `429` (past the plan's calls) and `503` with `code: "maintenance"`; a refusal (`400`) is final. The token
+   must be made valid on workers too, and the worker prints only labels it already has.
 
 ## The print request
 

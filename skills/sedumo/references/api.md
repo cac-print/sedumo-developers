@@ -110,8 +110,9 @@ sets the worker to listen there, `WORKER_LOCAL_API_BIND`; ask for its address).
   valid token keeps working.
 - A common pattern: send to the cloud; go to the worker only when the cloud can't be reached at all (connection
   refused, no DNS). After a **timeout**, the cloud may have queued the print, and the worker doesn't know the cloud's
-  keys: retry the cloud with the same key (safe) until it answers or is clearly unreachable. An answer from the cloud,
-  even a `4xx`, is final.
+  keys: retry the cloud with the same key (safe) until it answers or is clearly unreachable. An answer from the cloud
+  is final, with two exceptions that queue nothing and so may go to the worker: `429` (past the plan's calls; the
+  worker's local API has no such limit) and `503` with `code: "maintenance"` (workers keep printing during it).
 
 ## A web page on the plant network
 
