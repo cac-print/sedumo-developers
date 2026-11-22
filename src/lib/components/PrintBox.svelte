@@ -1,16 +1,17 @@
 <script lang="ts">
 	import Preview from './Preview.svelte';
 	import PrintStatus from './PrintStatus.svelte';
-	import { requestProblem, type PrintRequest } from '#lib/print-request.ts';
+	import { isIdempotencyKey, requestProblem, type PrintRequest } from '#lib/print-request.ts';
 
-	type Answer = { status: number; body: { jobId?: string; message?: unknown } & Record<string, unknown> };
+	type Answer = { status: number; body: { jobId?: string; message?: unknown } & Record<string, unknown>; replayed?: boolean };
 	// The preview, Print, and what happened: Sedumo's refusal with its reason, or the print's status until it's done.
 	let {
 		request,
 		size,
 		answer = $bindable(null),
 		lastStatus = $bindable(null),
-		preview = true
+		preview = true,
+		idempotencyKey
 	}: {
 		request: PrintRequest | null;
 		size: { widthMm: number; heightMm: number } | null;
@@ -18,10 +19,19 @@
 		lastStatus?: unknown;
 		// Sedumo previews labels designed in it; a file prints as it is.
 		preview?: boolean;
+		// Sent as the Idempotency-Key header: then Print can send the same request again.
+		idempotencyKey?: string;
 	} = $props();
 
-	// Past the demo's limits: said here, and neither previewed nor sent.
-	const problem = $derived(request ? requestProblem(request) : null);
+	// Past the demo's limits, or a key that can't be sent: said here, and neither previewed nor sent.
+	const problem = $derived(
+		request
+			? (requestProblem(request) ??
+					(idempotencyKey !== undefined && !isIdempotencyKey(idempotencyKey)
+						? 'An Idempotency-Key is 1 to 200 visible characters, no spaces (letters, digits and signs)'
+						: null))
+			: null
+	);
 	const sendable = $derived(problem ? null : request);
 
 	let sending = $state(false);
@@ -33,7 +43,7 @@
 		try {
 			const response = await fetch('/examples/print', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers: { 'Content-Type': 'application/json', ...(idempotencyKey !== undefined ? { 'Idempotency-Key': idempotencyKey } : {}) },
 				body: JSON.stringify(sendable)
 			});
 			answer = await response.json().then(
@@ -56,6 +66,9 @@
 
 {#if answer && answer.status !== 201}
 	<p class="refused" role="alert"><strong>Refused ({answer.status})</strong>: {String(answer.body.message ?? 'see the answer')}</p>
+{/if}
+{#if answer?.replayed}
+	<p class="replayed" role="status">Sedumo answered with the first answer (<code>Idempotent-Replayed: true</code>): nothing more printed.</p>
 {/if}
 {#if jobId}
 	<PrintStatus {jobId} onstatus={(s) => (lastStatus = s)} />
@@ -83,6 +96,13 @@
 		border-radius: 8px;
 		background: var(--sunken);
 		border-left: 4px solid var(--sedumo-coral);
+	}
+	.replayed {
+		margin: 0;
+		padding: 0.6rem 0.8rem;
+		border-radius: 8px;
+		background: var(--sunken);
+		border-left: 4px solid var(--sedumo-leaf);
 	}
 	.note {
 		color: var(--muted);

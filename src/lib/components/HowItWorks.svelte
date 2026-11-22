@@ -11,15 +11,17 @@
 		apiUrl,
 		guides,
 		intro,
-		notes
+		notes,
+		headers = {}
 	}: {
 		request: PrintRequest | null;
-		answer: { status: number; body: { jobId?: string } & Record<string, unknown> } | null;
+		answer: { status: number; body: { jobId?: string } & Record<string, unknown>; replayed?: boolean } | null;
 		lastStatus: unknown;
 		apiUrl: string;
 		guides: { href: string; text: string }[];
 		intro: Snippet;
 		notes?: Snippet;
+		headers?: Record<string, string>;
 	} = $props();
 	const jobId = $derived(answer?.status === 201 ? answer.body.jobId : undefined);
 </script>
@@ -28,12 +30,15 @@
 {@render intro()}
 
 <h3>The request</h3>
-{#if request}<Code code={curlFor(request, '/print', apiUrl)} label="the request" />{/if}
+{#if request}<Code code={curlFor(request, '/print', apiUrl, headers)} label="the request" />{/if}
 {#if notes}<div class="small">{@render notes()}</div>{/if}
 
 <h3>What comes back</h3>
 {#if answer}
-	<Code code={`HTTP ${answer.status}\n${JSON.stringify(answer.body, null, 2)}`} label="the answer" />
+	<Code
+		code={`HTTP ${answer.status}${answer.replayed ? '\nIdempotent-Replayed: true' : ''}\n${JSON.stringify(answer.body, null, 2)}`}
+		label="the answer"
+	/>
 {:else}
 	<p class="small">Press Print: Sedumo answers as soon as the print is queued, with its <code>jobId</code>.</p>
 {/if}
