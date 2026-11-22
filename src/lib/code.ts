@@ -1,33 +1,37 @@
 // The request an example sends, as a program in each language a developer may use: the same JSON, the same headers,
 // the token from the environment. A PDF sent with the request is read from a file (`document.pdf`) and sent as base64.
-// `scripts/run-code.ts` runs every one that runs outside an ERP and checks what each sends (in CI against a local
-// server); ABAP, X++ and AL need their ERP, so they are written the same way but not run.
+// `scripts/run-code.ts` runs every one that runs on its own and checks what each sends (in CI against a local
+// server); ABAP, X++, AL and VBA run only inside their application, so they are written the same way but not run.
 import { API_URL, curlFor, type PrintRequest } from './print-request.ts';
 
 export const LANGUAGES = [
 	{ id: 'curl', name: 'curl' },
 	{ id: 'csharp', name: 'C#' },
+	{ id: 'vbnet', name: 'VB.NET' },
 	{ id: 'java', name: 'Java' },
 	{ id: 'python', name: 'Python' },
 	{ id: 'node', name: 'Node.js' },
 	{ id: 'php', name: 'PHP' },
 	{ id: 'go', name: 'Go' },
-	// Each runs only inside its ERP (`erp`), so our checks can't run it.
-	{ id: 'abap', name: 'ABAP', erp: 'SAP' },
-	{ id: 'xpp', name: 'X++', erp: 'Dynamics 365 Finance and Operations' },
-	{ id: 'al', name: 'AL', erp: 'Dynamics 365 Business Central' }
+	{ id: 'ruby', name: 'Ruby' },
+	{ id: 'powershell', name: 'PowerShell' },
+	// Each runs only inside its application (`onlyIn`), so our checks can't run it.
+	{ id: 'abap', name: 'ABAP', onlyIn: 'SAP' },
+	{ id: 'xpp', name: 'X++', onlyIn: 'Dynamics 365 Finance and Operations' },
+	{ id: 'al', name: 'AL', onlyIn: 'Dynamics 365 Business Central' },
+	{ id: 'vba', name: 'Excel VBA', onlyIn: 'Microsoft Excel' }
 ] as const;
 
 export type Language = (typeof LANGUAGES)[number]['id'];
 
-/** The ERP a language runs in, when it runs only there. */
-export const erpOf = (language: Language) => (LANGUAGES.find((l) => l.id === language) as { erp?: string } | undefined)?.erp;
+/** The application a language runs in, when it runs only there (an ERP, Excel). */
+export const onlyIn = (language: Language) => (LANGUAGES.find((l) => l.id === language) as { onlyIn?: string } | undefined)?.onlyIn;
 
 export type CodeOptions = { path?: string; apiUrl?: string; headers?: Record<string, string> };
 
 /** The file a program reads when the request sends a PDF (or any file as base64). */
 export const PDF_FILE = 'document.pdf';
-// Where the file's base64 goes in a request written out as JSON text (C#, Java, Go, ABAP, X++, AL).
+// Where the file's base64 goes in a request written out as JSON text (all but Python, Node.js, PHP and Ruby).
 const PDF_MARK = `<${PDF_FILE} as base64>`;
 
 /** The request as a program in `language`. */
@@ -36,7 +40,7 @@ export function codeFor(language: Language, request: PrintRequest, options: Code
 	const url = `${apiUrl}${path}`;
 	const pdf = 'content' in request.document && request.document.encoding === 'base64';
 	if (language === 'curl') return curlFor(request, path, apiUrl, headers);
-	const make = { csharp, java, python, node, php, go, abap, xpp, al }[language];
+	const make = { csharp, vbnet, java, python, node, php, go, ruby, powershell, abap, xpp, al, vba }[language];
 	return make({ request, url, headers, pdf });
 }
 
@@ -329,12 +333,7 @@ ${header}	response, err := (&http.Client{Timeout: 30 * time.Second}).Do(request)
 const abapText = (s: string) => `\`${s.replace(/`/g, '``')}\``;
 function abapLines(json: string): string {
 	// The JSON's line breaks are only for reading it: the lines are joined without them.
-	const pieces = json.split('\n').flatMap((line) => {
-		// By whole characters, so none is cut in two.
-		const characters = Array.from(line);
-		return Array.from({ length: Math.ceil(characters.length / 100) }, (_, i) => characters.slice(i * 100, i * 100 + 100).join(''));
-	});
-	return pieces.map((p) => `    ${abapText(p)}`).join(' &&\n');
+	return pieces(json).map((p) => `    ${abapText(p)}`).join(' &&\n');
 }
 
 function abap(parts: Parts): string {
@@ -433,12 +432,7 @@ const alText = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
 function al(parts: Parts): string {
 	const { url, headers, pdf } = parts;
-	const lines = jsonText(parts)
-		.split('\n')
-		.flatMap((line) => {
-			const characters = Array.from(line);
-			return Array.from({ length: Math.ceil(characters.length / 100) }, (_, i) => characters.slice(i * 100, i * 100 + 100).join(''));
-		})
+	const lines = pieces(jsonText(parts))
 		.map((piece) => `            ${alText(piece)}`)
 		.join(' +\n');
 	const header = Object.entries(headers)
@@ -480,4 +474,210 @@ ${header}        Client.Post(${alText(url)}, Content, Response);
     end;
 }
 `;
+}
+
+// Long lines of JSON in pieces of whole characters, for languages whose lines or literals are limited.
+const pieces = (json: string, size = 100) =>
+	json.split('\n').flatMap((line) => {
+		const characters = Array.from(line);
+		return Array.from({ length: Math.ceil(characters.length / size) }, (_, i) => characters.slice(i * size, i * size + size).join(''));
+	});
+
+// VB.NET and VBA: text in double quotes, a " doubled.
+const vbText = (s: string) => `"${s.replace(/"/g, '""')}"`;
+
+function vbnet(parts: Parts): string {
+	const { url, headers, pdf } = parts;
+	// VB.NET also takes “, ” and ＂ as quote marks: in the JSON they are written as \u escapes, the same value.
+	const json = jsonText(parts).replace(/[\u201c\u201d\uff02]/g, (c) => `\\u${c.charCodeAt(0).toString(16)}`);
+	const lines = pieces(json).map((p) => `            ${vbText(p)}`).join(' &\n');
+	const header = Object.entries(headers)
+		.map(([k, v]) => `            message.Headers.Add(${vbText(k)}, ${vbText(v)})\n`)
+		.join('');
+	const file = pdf ? `        request = request.Replace(${vbText(PDF_MARK)}, Convert.ToBase64String(IO.File.ReadAllBytes(${vbText(PDF_FILE)})))\n` : '';
+	return `' .NET 8 or newer: dotnet new console -lang VB, then this as Program.vb. The token in SEDUMO_TOKEN.
+Imports System.Net.Http
+Imports System.Net.Http.Headers
+Imports System.Text
+
+Module Program
+    Sub Main()
+        Dim request As String =
+${lines}
+${file}
+        Using http As New HttpClient() With {.Timeout = TimeSpan.FromSeconds(30)}
+            Dim message As New HttpRequestMessage(HttpMethod.Post, ${vbText(url)})
+            message.Content = New StringContent(request, Encoding.UTF8, "application/json")
+            message.Headers.Authorization = New AuthenticationHeaderValue("Bearer", Environment.GetEnvironmentVariable("SEDUMO_TOKEN"))
+${header}            Dim response = http.SendAsync(message).GetAwaiter().GetResult()
+            Dim answer = response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+            ' 201: queued, with its jobId. Otherwise Sedumo says why in the answer.
+            Console.WriteLine($"{CInt(response.StatusCode)} {answer}")
+        End Using
+    End Sub
+End Module
+`;
+}
+
+// Ruby: a string in double quotes takes JSON's escapes; a # is escaped, so "#{" can't start code.
+// Half of a character (a lone surrogate, as from text cut short) is one Ruby can't hold: it goes as U+FFFD (�).
+const rubyString = (s: string) =>
+	quoted(s)
+		.replace(/(?<!\\)((?:\\\\)*)\\u[dD][89a-fA-F][0-9a-fA-F]{2}/g, '$1\\ufffd')
+		.replace(/#/g, '\\#');
+
+function ruby({ request, url, headers, pdf }: Parts): string {
+	const l: Literals = {
+		string: rubyString,
+		key: rubyString,
+		object: ['{', '}'],
+		array: ['[', ']'],
+		pair: ' => ',
+		empty: '{}',
+		true: 'true',
+		false: 'false',
+		null: 'nil',
+		file: `[File.binread(${rubyString(PDF_FILE)})].pack("m0")`,
+		indent: '  '
+	};
+	const header = Object.entries(headers).map(([k, v]) => `request[${rubyString(k)}] = ${rubyString(v)}\n`).join('');
+	return `# Ruby 2.7 or newer, nothing to install. The token in SEDUMO_TOKEN.
+require "json"
+require "net/http"
+
+body = ${literal(pdf ? withMark(request) : request, l, 0, pdf)}
+
+uri = URI(${rubyString(url)})
+request = Net::HTTP::Post.new(uri)
+request["Authorization"] = "Bearer #{ENV.fetch("SEDUMO_TOKEN")}"
+request["Content-Type"] = "application/json"
+${header}request.body = JSON.generate(body)
+response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: 10, read_timeout: 30) do |http|
+  http.request(request)
+end
+# 201: queued, with its jobId. Otherwise Sedumo says why in the answer.
+puts "#{response.code} #{response.body}"
+`;
+}
+
+// PowerShell: text in single quotes, a ' doubled.
+const psText = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+function powershell(parts: Parts): string {
+	const { url, headers, pdf } = parts;
+	// A here-string holds the JSON; it ends only at a line starting with '@, which JSON never has. In ASCII, letters
+	// beyond it as JSON's \u escapes, since Windows PowerShell 5.1 reads a file without a BOM in the PC's code page.
+	const json = ascii(jsonText(parts));
+	const header = Object.entries(headers).map(([k, v]) => `    ${psText(k)} = ${psText(v)}\n`).join('');
+	const file = pdf
+		? `$body = $body.Replace(${psText(PDF_MARK)}, [Convert]::ToBase64String([IO.File]::ReadAllBytes((Resolve-Path ${psText(PDF_FILE)}))))\n`
+		: '';
+	return `# PowerShell 7, or Windows PowerShell 5.1. The token in SEDUMO_TOKEN.
+# Windows PowerShell 5.1 on an older Windows: TLS 1.2 first.
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+$body = @'
+${json}
+'@
+${file}$headers = @{
+    'Authorization' = "Bearer $env:SEDUMO_TOKEN"
+${header}}
+try {
+    $response = Invoke-WebRequest -UseBasicParsing -Method Post -Uri ${psText(url)} -Headers $headers \`
+        -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 30
+    # 201: queued, with its jobId.
+    "$($response.StatusCode) $($response.Content)"
+} catch {
+    if ($_.Exception.Response) {
+        # Refused: Sedumo says why in the answer.
+        "$([int]$_.Exception.Response.StatusCode) $($_.ErrorDetails.Message)"
+    } else {
+        # No answer: the network, the name or the time ran out.
+        "No answer: $($_.Exception.Message)"
+    }
+}
+`;
+}
+
+// VBA: Excel's editor keeps text in the PC's code page, so the JSON is ASCII, every other character as JSON's \\u
+// escape (the same value once read); a statement takes at most 24 line continuations, so the body is built line by line.
+const ascii = (json: string) => json.replace(/[^\x20-\x7e\n]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+
+function vba(parts: Parts): string {
+	const { url, headers, pdf } = parts;
+	// The body in functions of at most 200 lines each, so a long file never makes a procedure too large for VBA.
+	const lines = pieces(ascii(jsonText(parts))).map((p) => `    s = s & ${vbText(p)}`);
+	const parts200 = Array.from({ length: Math.ceil(lines.length / 200) }, (_, i) => lines.slice(i * 200, i * 200 + 200));
+	const bodyFunctions =
+		parts200.length === 1
+			? `Private Function RequestBody() As String
+    Dim s As String
+${parts200[0].join('\n')}
+    RequestBody = s
+End Function
+`
+			: `Private Function RequestBody() As String
+    RequestBody = ${parts200.map((_, i) => `RequestBody${i + 1}()`).join(' & ')}
+End Function
+${parts200
+	.map(
+		(part, i) => `
+Private Function RequestBody${i + 1}() As String
+    Dim s As String
+${part.join('\n')}
+    RequestBody${i + 1} = s
+End Function
+`
+	)
+	.join('')}`;
+	// Header values as they are: only the JSON is written in ASCII.
+	const header = Object.entries(headers)
+		.map(([k, v]) => `    http.setRequestHeader ${vbText(k)}, ${vbText(v)}\n`)
+		.join('');
+	const file = pdf
+		? `    ' The PDF from ${PDF_FILE} in the workbook's folder: a folder on this PC, not OneDrive or SharePoint.
+    If ThisWorkbook.Path = "" Or InStr(ThisWorkbook.Path, "://") > 0 Then
+        MsgBox "Save the workbook in a folder on this PC, with ${PDF_FILE} next to it."
+        Exit Sub
+    End If
+    body = Replace(body, ${vbText(PDF_MARK)}, FileBase64(ThisWorkbook.Path & "\\${PDF_FILE}"))
+`
+		: '';
+	const readFile = pdf
+		? `
+' A file as base64, with what Windows has: ADODB reads it, MSXML encodes it.
+Private Function FileBase64(path As String) As String
+    Dim stream As Object, node As Object
+    Set stream = CreateObject("ADODB.Stream")
+    stream.Type = 1
+    stream.Open
+    stream.LoadFromFile path
+    Set node = CreateObject("MSXML2.DOMDocument.6.0").createElement("b64")
+    node.DataType = "bin.base64"
+    node.nodeTypedValue = stream.Read
+    stream.Close
+    FileBase64 = Replace(Replace(node.Text, vbLf, ""), vbCr, "")
+End Function
+`
+		: '';
+	return `' Excel VBA on Windows: a module in your workbook (Alt+F11, Insert > Module), then run SedumoPrint.
+' The token from the user's environment (SEDUMO_TOKEN), so it is never saved in the workbook.
+Sub SedumoPrint()
+    Dim body As String
+    body = RequestBody()
+${file}
+    Dim http As Object
+    Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    http.setTimeouts 10000, 10000, 30000, 30000
+    http.Open "POST", ${vbText(url)}, False
+    http.setRequestHeader "Authorization", "Bearer " & Environ("SEDUMO_TOKEN")
+    http.setRequestHeader "Content-Type", "application/json"
+${header}    http.send body
+    ' 201: queued, with its jobId. Otherwise Sedumo says why in the answer.
+    Debug.Print http.Status & " " & http.responseText
+End Sub
+
+' The request, as the page sends it. Excel's editor keeps text in the PC's code page, so letters beyond ASCII are
+' written as JSON's \\u escapes: the same value once Sedumo reads it.
+${bodyFunctions}${readFile}`;
 }

@@ -1,4 +1,4 @@
-// Runs the code the examples show, in every language that runs outside an ERP (not ABAP, X++ or AL). First against
+// Runs the code the examples show, in every language that runs on its own (not ABAP, X++, AL or VBA). First against
 // a local server that checks each program sends exactly the page's request: the same JSON, the token, the headers.
 // Then, with SEDUMO_TOKEN, against Sedumo, where each print must be queued (201): the token needs print and
 // printers:read, on an account with the sample labels (`npm run setup`) and the printers "ZPL 203 dpi" and
@@ -23,7 +23,7 @@ const apiUrl = (process.env.SEDUMO_API_URL ?? 'https://api.sedumo.com').replace(
 const token = process.env.SEDUMO_TOKEN;
 
 // How each program runs: its file, the command, and the Docker image for --docker.
-type How = { file: string; command: string[]; image: string; project?: string };
+type How = { file: string; command: string[]; image: string; project?: { file: string; text: string } };
 const RUN: Partial<Record<Language, How>> = {
 	python: { file: 'print.py', command: ['python3', 'print.py'], image: 'python:3.13-slim' },
 	node: { file: 'print.mjs', command: ['node', 'print.mjs'], image: 'node:24-slim' },
@@ -33,10 +33,26 @@ const RUN: Partial<Record<Language, How>> = {
 	csharp: {
 		file: 'Program.cs',
 		// A console project around Program.cs, as `dotnet new console` makes it.
-		project: `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup></Project>`,
+		project: {
+			file: 'print.csproj',
+			text: `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup></Project>`
+		},
 		command: ['dotnet', 'run'],
 		image: 'mcr.microsoft.com/dotnet/sdk:8.0'
-	}
+	},
+	vbnet: {
+		file: 'Program.vb',
+		// As `dotnet new console -lang VB` makes it.
+		project: {
+			file: 'print.vbproj',
+			text: `<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><RootNamespace>print</RootNamespace><TargetFramework>net8.0</TargetFramework></PropertyGroup></Project>`
+		},
+		command: ['dotnet', 'run'],
+		image: 'mcr.microsoft.com/dotnet/sdk:8.0'
+	},
+	ruby: { file: 'print.rb', command: ['ruby', 'print.rb'], image: 'ruby:3.3-slim' },
+	// The .NET SDK's image has PowerShell 7.
+	powershell: { file: 'print.ps1', command: ['pwsh', '-NoProfile', '-File', 'print.ps1'], image: 'mcr.microsoft.com/dotnet/sdk:8.0' }
 };
 
 // The printers to print to: Sedumo's own ids, or made up for the local check.
@@ -58,7 +74,7 @@ function printer(name: string): string {
 const run = Date.now().toString(36);
 const pdfFile = 'setup/files/packing-list.pdf';
 // Every kind of request a page makes, with text that needs escaping in some language: quotes, $, \, a backquote, ä,
-// a byte-order mark (pasted from a spreadsheet) and a line separator.
+// curly quotes, Ruby's #{, a byte-order mark (pasted from a spreadsheet) and a line separator.
 type Case = { name: string; request: PrintRequest; headers?: Record<string, string>; pdf?: string };
 const CASES: Case[] = [
 	{
@@ -66,7 +82,7 @@ const CASES: Case[] = [
 		request: {
 			document: { path: 'Product label.template' },
 			printerId: printer('ZPL 203 dpi'),
-			data: { values: { product: 'Butter 250 g', weight: '0.250', best_before: '2026-12-31', lot: `\ufeffL-$1 \\ O'Neil "x" \`y\` ä\u2028`, ean: '3830001234567' } },
+			data: { values: { product: 'Butter 250 g', weight: '0.250', best_before: '2026-12-31', lot: `\ufeffL-$1 \\ O'Neil "x" \`y\` ä č „P“ “q” #{x} #@a\u2028`, ean: '3830001234567' } },
 			onBehalfOf: { id: 'code-check', name: 'Code check' }
 		},
 		headers: { 'Idempotency-Key': `code-check-${run}` }
@@ -131,7 +147,7 @@ async function runProgram(language: Language, code: string, c: Case, environment
 	const dir = mkdtempSync(join(tmpdir(), `sedumo-code-${language}-`));
 	try {
 		writeFileSync(join(dir, how.file), code);
-		if (how.project) writeFileSync(join(dir, 'print.csproj'), how.project);
+		if (how.project) writeFileSync(join(dir, how.project.file), how.project.text);
 		if (c.pdf) copyFileSync(c.pdf, join(dir, PDF_FILE));
 		const env = { ...process.env, SEDUMO_TOKEN: environmentToken };
 		const command = docker
@@ -162,7 +178,7 @@ for (const language of languages) {
 		for (const target of targets) {
 			expected = { body, headers };
 			const { ok, output } = await runProgram(language, codeFor(language, c.request, { apiUrl: target.url, headers }), c, target.token);
-			const what = `${language.padEnd(6)} ${target.where.padEnd(6)} ${i + 1}. ${c.name}`;
+			const what = `${language.padEnd(10)} ${target.where.padEnd(6)} ${i + 1}. ${c.name}`;
 			console.log(ok ? `ok   ${what}` : `FAIL ${what}: ${output.replace(/\s+/g, ' ').slice(0, 500)}`);
 			if (!ok) failed.push(what);
 			if (!ok) break;

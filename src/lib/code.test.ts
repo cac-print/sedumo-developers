@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeFor, erpOf, LANGUAGES, PDF_FILE } from './code.ts';
+import { codeFor, onlyIn, LANGUAGES, PDF_FILE } from './code.ts';
 import type { PrintRequest } from './print-request.ts';
 
 const label: PrintRequest = {
@@ -20,18 +20,19 @@ describe('codeFor', () => {
 	});
 
 	it('reads a PDF from its file instead of carrying the base64', () => {
-		for (const { id } of LANGUAGES.filter((l) => l.id !== 'curl' && !erpOf(l.id))) {
+		for (const { id } of LANGUAGES.filter((l) => l.id !== 'curl' && !onlyIn(l.id))) {
 			const code = codeFor(id, pdf);
 			expect(code, id).toContain(PDF_FILE);
 			expect(code, id).not.toContain('JVBERi0x');
 		}
 	});
 
-	it('puts the PDF in from its bytes in an ERP, never the page’s base64', () => {
+	it('puts the PDF in from its bytes inside an application, never the page’s base64', () => {
 		expect(codeFor('abap', pdf)).toContain('encode_x_base64( pdf )');
 		expect(codeFor('xpp', pdf)).toContain('System.Convert::ToBase64String(pdf)');
 		expect(codeFor('al', pdf)).toContain('Base64Convert.ToBase64(PdfStream)');
-		for (const id of ['abap', 'xpp', 'al'] as const) expect(codeFor(id, pdf), id).not.toContain('JVBERi0x');
+		expect(codeFor('vba', pdf)).toContain('FileBase64(ThisWorkbook.Path & "\\document.pdf")');
+		for (const id of ['abap', 'xpp', 'al', 'vba'] as const) expect(codeFor(id, pdf), id).not.toContain('JVBERi0x');
 	});
 
 	it('keeps the JSON exactly in C# and Go', () => {
@@ -80,6 +81,36 @@ describe('codeFor', () => {
 		const al = codeFor('al', label);
 		const body = [...al.matchAll(/^ {12}'(.*)'(?: \+|;)$/gm)].map((m) => m[1].replace(/''/g, "'")).join('');
 		expect(JSON.parse(body)).toEqual(label);
+	});
+
+	it('keeps the JSON exactly in VB.NET, PowerShell and VBA, curly quotes and letters beyond ASCII too', () => {
+		const odd: PrintRequest = { ...label, data: { values: { product: 'Maslo „Planika“ “x” ＂', lot: 'č ž ä 😀 #{x}' } } };
+		const vb = codeFor('vbnet', odd);
+		expect(vb).not.toMatch(/[“”＂]/);
+		const vbBody = [...vb.matchAll(/^ {12}"(.*)"(?: &)?$/gm)].map((m) => m[1].replace(/""/g, '"')).join('');
+		expect(JSON.parse(vbBody)).toEqual(odd);
+		const ps = /\$body = @'\n([\s\S]*?)\n'@/.exec(codeFor('powershell', odd))?.[1] ?? '';
+		expect(ps).toMatch(/^[\x20-\x7e\n]*$/);
+		expect(JSON.parse(ps)).toEqual(odd);
+		const vba = codeFor('vba', odd);
+		expect(vba.split('\n').filter((line) => line.includes('s = s & ')).join('')).toMatch(/^[\x20-\x7e]*$/);
+		const vbaBody = [...vba.matchAll(/^ {4}s = s & "(.*)"$/gm)].map((m) => m[1].replace(/""/g, '"')).join('');
+		expect(JSON.parse(vbaBody)).toEqual(odd);
+	});
+
+	it('splits a long VBA body into functions of at most 200 lines', () => {
+		const long: PrintRequest = { ...label, document: { content: 'x'.repeat(50_000), kind: 'stream', encoding: 'text' } };
+		const vba = codeFor('vba', long);
+		const functions = vba.split(/^Private Function RequestBody\d+\(\)/m).slice(1);
+		expect(functions.length).toBeGreaterThan(2);
+		for (const f of functions) expect((f.match(/ s = s & /g) ?? []).length).toBeLessThanOrEqual(200);
+		const body = [...vba.matchAll(/^ {4}s = s & "(.*)"$/gm)].map((m) => m[1].replace(/""/g, '"')).join('');
+		expect(JSON.parse(body)).toEqual(long);
+	});
+
+	it('keeps Ruby from reading #{ as code, and a lone surrogate from stopping it', () => {
+		const ruby = codeFor('ruby', { ...label, data: { values: { lot: '#{x} #@a \ud83d' } } });
+		expect(ruby).toContain('"\\#{x} \\#@a \\ufffd"');
 	});
 
 	it('keeps ABAP’s lines short and its backquotes doubled', () => {
