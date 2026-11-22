@@ -53,6 +53,18 @@ export function fileLabels(content: string, kind: 'stream' | 'oracle_xml'): { la
 	return { labels: Math.max(1, each.reduce((sum, q) => sum + q, 0)) };
 }
 
+/** A file's text as the demo checks it: as sent, or decoded from base64 unless it's a PDF; null for a PDF. */
+function fileText(content: string, encoding: string | undefined): string | null {
+	if (encoding !== 'base64') return content;
+	let decoded: string;
+	try {
+		decoded = atob(content);
+	} catch {
+		return '';
+	}
+	return decoded.startsWith('%PDF') ? null : decoded;
+}
+
 function recordProblem(record: unknown, copiesAllowed: boolean): string | null {
 	if (!record || typeof record !== 'object' || Array.isArray(record)) return 'A record is a set of values';
 	const entries = Object.entries(record).filter(([name]) => !(copiesAllowed && name === 'copies'));
@@ -81,9 +93,10 @@ export function requestProblem(body: unknown): string | null {
 		if (ref.length !== 1 || !['id', 'path', 'sha256'].includes(documentKeys) || !isText(ref[0], LIMITS.idLength))
 			return 'Name one document';
 	}
-	// A file's own labels count against the demo's limits (a PDF's pages don't: its size is the limit).
-	const fromFile =
-		'content' in document && document.encoding !== 'base64' ? fileLabels(document.content as string, xml ? 'oracle_xml' : 'stream') : { labels: 1 };
+	// A file's own labels count against the demo's limits (a PDF's pages don't: its size is the limit), ZPL sent as
+	// base64 too (as Dynamics 365 sends it).
+	const text = 'content' in document ? fileText(document.content as string, document.encoding as string | undefined) : null;
+	const fromFile = text !== null ? fileLabels(text, xml ? 'oracle_xml' : 'stream') : { labels: 1 };
 	if ('problem' in fromFile) return fromFile.problem;
 	const who = r.onBehalfOf as unknown;
 	if (who !== undefined) {

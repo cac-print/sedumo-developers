@@ -11,7 +11,8 @@
 		answer = $bindable(null),
 		lastStatus = $bindable(null),
 		preview = true,
-		idempotencyKey
+		idempotencyKey,
+		successStatus
 	}: {
 		request: PrintRequest | null;
 		size: { widthMm: number; heightMm: number } | null;
@@ -21,6 +22,8 @@
 		preview?: boolean;
 		// Sent as the Idempotency-Key header: then Print can send the same request again.
 		idempotencyKey?: string;
+		// `?successStatus=200`, as Dynamics 365 sends it: a queued print answered with 200.
+		successStatus?: 200;
 	} = $props();
 
 	// Past the demo's limits, or a key that can't be sent: said here, and neither previewed nor sent.
@@ -41,7 +44,7 @@
 		answer = null;
 		lastStatus = null;
 		try {
-			const response = await fetch('/examples/print', {
+			const response = await fetch(successStatus ? `/examples/print?successStatus=${successStatus}` : '/examples/print', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', ...(idempotencyKey !== undefined ? { 'Idempotency-Key': idempotencyKey } : {}) },
 				body: JSON.stringify(sendable)
@@ -56,7 +59,8 @@
 			sending = false;
 		}
 	}
-	const jobId = $derived(answer?.status === 201 ? answer.body.jobId : undefined);
+	// Queued: 201, or 200 when asked for.
+	const jobId = $derived(answer && answer.status >= 200 && answer.status < 300 ? answer.body.jobId : undefined);
 </script>
 
 {#if problem}<p class="refused" role="alert">{problem}</p>{/if}

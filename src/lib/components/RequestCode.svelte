@@ -5,7 +5,12 @@
 	import type { PrintRequest } from '#lib/print-request.ts';
 
 	// The request in the language the reader picks; the choice is kept in this browser for every example.
-	let { request, apiUrl, headers = {} }: { request: PrintRequest; apiUrl: string; headers?: Record<string, string> } = $props();
+	let {
+		request,
+		apiUrl,
+		headers = {},
+		path = '/print'
+	}: { request: PrintRequest; apiUrl: string; headers?: Record<string, string>; path?: string } = $props();
 
 	const KEY = 'sedumo-examples-language';
 	let language = $state<Language>('curl');
@@ -37,7 +42,7 @@
 	{/each}
 </div>
 <div role="tabpanel" aria-label={name}>
-	<Code code={codeFor(language, request, { apiUrl, headers })} label="the request in {name}" />
+	<Code code={codeFor(language, request, { apiUrl, headers, path })} label="the request in {name}" />
 	{#if language !== 'curl'}
 		<p class="small">
 			{#if app}

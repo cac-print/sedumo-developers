@@ -98,9 +98,11 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 		 * The one print action: a document, a printer and data. Refusals come back as an answer, not an error. With an
 		 * idempotency key, the same request sent again within 24 hours gets the first answer and prints nothing more.
 		 */
-		print: async (request: PrintRequest, idempotencyKey?: string): Promise<Answer> => {
+		print: async (request: PrintRequest, idempotencyKey?: string, successStatus?: 200): Promise<Answer> => {
 			try {
-				const response = await send('POST', '/print', request, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {});
+				// `?successStatus=200`: answered with 200 instead of 201, for callers that count only 200 (Dynamics 365).
+				const path = successStatus ? `/print?successStatus=${successStatus}` : '/print';
+				const response = await send('POST', path, request, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {});
 				const replayed = response.headers.get('Idempotent-Replayed') === 'true';
 				return { status: response.status, body: await response.json(), ...(replayed ? { replayed } : {}) };
 			} catch (error) {
