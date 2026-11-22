@@ -36,7 +36,9 @@ export class SedumoError extends Error {
 		readonly status: number,
 		readonly body: unknown,
 		// Sedumo's own words, to show a person.
-		readonly reason: string
+		readonly reason: string,
+		// The first answer to this key, sent again (Idempotent-Replayed: true).
+		readonly replayed = false
 	) {
 		super(`Sedumo ${status}: ${reason}`);
 	}
@@ -65,7 +67,12 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 				// not JSON: keep the text
 			}
 			const message = (parsed as { message?: unknown })?.message;
-			throw new SedumoError(response.status, parsed, typeof message === 'string' ? message : text.slice(0, 300));
+			throw new SedumoError(
+				response.status,
+				parsed,
+				typeof message === 'string' ? message : text.slice(0, 300),
+				response.headers.get('Idempotent-Replayed') === 'true'
+			);
 		}
 		return response;
 	}
@@ -97,7 +104,8 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 				const replayed = response.headers.get('Idempotent-Replayed') === 'true';
 				return { status: response.status, body: await response.json(), ...(replayed ? { replayed } : {}) };
 			} catch (error) {
-				if (error instanceof SedumoError && error.status < 500) return { status: error.status, body: error.body };
+				if (error instanceof SedumoError && error.status < 500)
+					return { status: error.status, body: error.body, ...(error.replayed ? { replayed: true } : {}) };
 				throw error;
 			}
 		},

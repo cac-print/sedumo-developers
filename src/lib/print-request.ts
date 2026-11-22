@@ -160,6 +160,9 @@ function cleanData(data: PrintData): PrintData {
 	return data.common ? { common: data.common, changes: data.changes } : { changes: data.changes };
 }
 
+/** An Idempotency-Key as Sedumo takes it: 1 to 200 visible characters, no spaces. */
+export const isIdempotencyKey = (key: string) => /^[\x21-\x7e]{1,200}$/.test(key);
+
 /** The request as curl prints it, with the token from $SEDUMO_TOKEN. */
 export function curlFor(request: PrintRequest, path = '/print', apiUrl = API_URL, headers: Record<string, string> = {}): string {
 	// A long file (a PDF's base64) is shortened, so the command stays readable; the request sends all of it.
@@ -173,7 +176,8 @@ export function curlFor(request: PrintRequest, path = '/print', apiUrl = API_URL
 		`curl ${apiUrl}${path} \\`,
 		`  -H "Authorization: Bearer $SEDUMO_TOKEN" \\`,
 		`  -H "Content-Type: application/json" \\`,
-		...Object.entries(headers).map(([name, value]) => `  -H "${name}: ${value}" \\`),
+		// Single quotes, so a $ or " in a value reaches the server as it is.
+		...Object.entries(headers).map(([name, value]) => `  -H '${`${name}: ${value}`.replace(/'/g, `'\\''`)}' \\`),
 		`  -d '${body}'`
 	].join('\n');
 }

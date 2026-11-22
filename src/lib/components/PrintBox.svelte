@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Preview from './Preview.svelte';
 	import PrintStatus from './PrintStatus.svelte';
-	import { requestProblem, type PrintRequest } from '#lib/print-request.ts';
+	import { isIdempotencyKey, requestProblem, type PrintRequest } from '#lib/print-request.ts';
 
 	type Answer = { status: number; body: { jobId?: string; message?: unknown } & Record<string, unknown>; replayed?: boolean };
 	// The preview, Print, and what happened: Sedumo's refusal with its reason, or the print's status until it's done.
@@ -11,8 +11,7 @@
 		answer = $bindable(null),
 		lastStatus = $bindable(null),
 		preview = true,
-		idempotencyKey,
-		sends = $bindable(0)
+		idempotencyKey
 	}: {
 		request: PrintRequest | null;
 		size: { widthMm: number; heightMm: number } | null;
@@ -22,11 +21,17 @@
 		preview?: boolean;
 		// Sent as the Idempotency-Key header: then Print can send the same request again.
 		idempotencyKey?: string;
-		sends?: number;
 	} = $props();
 
-	// Past the demo's limits: said here, and neither previewed nor sent.
-	const problem = $derived(request ? requestProblem(request) : null);
+	// Past the demo's limits, or a key that can't be sent: said here, and neither previewed nor sent.
+	const problem = $derived(
+		request
+			? (requestProblem(request) ??
+					(idempotencyKey !== undefined && !isIdempotencyKey(idempotencyKey)
+						? 'An Idempotency-Key is 1 to 200 visible characters, no spaces (letters, digits and signs)'
+						: null))
+			: null
+	);
 	const sendable = $derived(problem ? null : request);
 
 	let sending = $state(false);
@@ -35,11 +40,10 @@
 		sending = true;
 		answer = null;
 		lastStatus = null;
-		sends += 1;
 		try {
 			const response = await fetch('/examples/print', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json', ...(idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {}) },
+				headers: { 'Content-Type': 'application/json', ...(idempotencyKey !== undefined ? { 'Idempotency-Key': idempotencyKey } : {}) },
 				body: JSON.stringify(sendable)
 			});
 			answer = await response.json().then(

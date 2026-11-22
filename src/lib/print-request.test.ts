@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanRequest, curlFor, fileLabels, requestProblem, type PrintRequest } from './print-request.ts';
+import { cleanRequest, curlFor, fileLabels, isIdempotencyKey, requestProblem, type PrintRequest } from './print-request.ts';
 
 const base = { document: { path: 'Product label.template' }, printerId: 'p1', data: { values: { lot: 'L1' } } };
 
@@ -63,6 +63,16 @@ describe('curlFor', () => {
 		expect(curl).toContain('curl https://api.sedumo.com/print');
 		expect(curl).toContain('Bearer $SEDUMO_TOKEN');
 		expect(curl).toContain('"path": "Product label.template"');
+	});
+	it('quotes a header so $ and " reach the server as they are', () => {
+		expect(curlFor(base, '/print', 'https://api.sedumo.com', { 'Idempotency-Key': `a$1"b'c` })).toContain(`-H 'Idempotency-Key: a$1"b'\\''c'`);
+	});
+	it('takes an Idempotency-Key of visible characters only', () => {
+		expect(isIdempotencyKey('order-4711-line-2')).toBe(true);
+		expect(isIdempotencyKey('naročilo-1')).toBe(false);
+		expect(isIdempotencyKey('a b')).toBe(false);
+		expect(isIdempotencyKey('')).toBe(false);
+		expect(isIdempotencyKey('x'.repeat(201))).toBe(false);
 	});
 	it('escapes a single quote in a value for the shell', () => {
 		expect(curlFor({ ...base, data: { values: { name: "O'Brien" } } })).toContain(`O'\\''Brien`);

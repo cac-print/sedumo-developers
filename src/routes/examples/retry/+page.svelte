@@ -4,7 +4,7 @@
 	import HowItWorks from '#lib/components/HowItWorks.svelte';
 	import PrintBox from '#lib/components/PrintBox.svelte';
 	import ValueFields from '#lib/components/ValueFields.svelte';
-	import { cleanRequest, type DocumentRef, type PrintRequest } from '#lib/print-request.ts';
+	import { cleanRequest, isIdempotencyKey, type DocumentRef, type PrintRequest } from '#lib/print-request.ts';
 	import { loadWho, onBehalfOf, saveWho, type Who } from '#lib/who.ts';
 
 	let { data } = $props();
@@ -16,14 +16,29 @@
 	let naming = $state<'id' | 'path' | 'sha256'>('path');
 	// Your app names each print with a key of its own, such as the order line; here it gets a random part, since every
 	// visitor of this site prints with the same token.
+	const randomPart = () => Array.from(crypto.getRandomValues(new Uint8Array(3)), (b) => b.toString(16).padStart(2, '0')).join('');
 	let key = $state('order-4711-line-2');
-	onMount(() => (key = `order-4711-line-2-${crypto.randomUUID().slice(0, 6)}`));
+	onMount(() => (key = `order-4711-line-2-${randomPart()}`));
 	let who = $state<Who>({ id: '', name: '' });
 	onMount(() => (who = loadWho()));
 	$effect(() => saveWho(who));
 	let answer = $state(null);
 	let lastStatus = $state<unknown>(null);
-	let sends = $state(0);
+	// The steps, ticked by what Sedumo answered: printed, the first answer again, the key refused for another print.
+	let steps = $state({ printed: false, replayed: false, refused: false });
+	$effect(() => {
+		const a = answer as { status: number; replayed?: boolean; body: { code?: string } } | null;
+		if (!a) return;
+		if (a.status === 201 && !a.replayed) steps.printed = true;
+		if (a.status === 201 && a.replayed && steps.printed) steps.replayed = true;
+		if (a.status === 422 && a.body.code === 'idempotency_key_reused' && steps.printed) steps.refused = true;
+	});
+	// Another key or label starts over.
+	$effect(() => {
+		void key;
+		void data.labelId;
+		steps = { printed: false, replayed: false, refused: false };
+	});
 
 	const label = $derived(data.labels.find((l) => l.id === data.labelId) ?? null);
 	const variables = $derived(data.template?.variables ?? []);
@@ -41,8 +56,7 @@
 			: null
 	);
 	const newKey = () => {
-		key = `order-4712-line-1-${crypto.randomUUID().slice(0, 6)}`;
-		sends = 0;
+		key = `order-4712-line-1-${randomPart()}`;
 		answer = null;
 	};
 </script>
@@ -66,19 +80,19 @@
 
 		<label>
 			<span>Idempotency-Key <small>the same for every attempt at this print</small></span>
-			<input bind:value={key} />
+			<input bind:value={key} maxlength="200" spellcheck="false" />
 		</label>
 		<button type="button" class="newkey" onclick={newKey}>A new print: a new key</button>
 
 		<ol class="steps">
-			<li class:done={sends >= 1}>Press Print: it prints.</li>
-			<li class:done={sends >= 2}>Press Print again, as an app does after a timeout: the same answer, nothing more prints.</li>
-			<li class:done={sends >= 3}>Change a value and press Print: the same key for another print is refused.</li>
+			<li class:done={steps.printed}>Press Print: it prints.</li>
+			<li class:done={steps.replayed}>Press Print again, as an app does after a timeout: the same answer, nothing more prints.</li>
+			<li class:done={steps.refused}>Change a value and press Print: the same key for another print is refused.</li>
 		</ol>
 
 		<label>Your name <input bind:value={who.name} placeholder="Shown in Sedumo’s print history" /></label>
 
-		<PrintBox {request} size={data.template?.size ?? null} idempotencyKey={key} bind:sends bind:answer bind:lastStatus />
+		<PrintBox {request} size={data.template?.size ?? null} idempotencyKey={key} bind:answer bind:lastStatus />
 	</section>
 
 	<section class="how" aria-label="How it works">
@@ -87,7 +101,7 @@
 			{answer}
 			{lastStatus}
 			apiUrl={data.apiUrl}
-			headers={{ 'Idempotency-Key': key }}
+			headers={isIdempotencyKey(key) ? { 'Idempotency-Key': key } : {}}
 			guides={[{ href: '/guides/api#4-print', text: 'API guide: 4. Print (Idempotency-Key)' }]}
 		>
 			{#snippet intro()}

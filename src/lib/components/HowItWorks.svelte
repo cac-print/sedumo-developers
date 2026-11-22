@@ -15,7 +15,7 @@
 		headers = {}
 	}: {
 		request: PrintRequest | null;
-		answer: { status: number; body: { jobId?: string } & Record<string, unknown> } | null;
+		answer: { status: number; body: { jobId?: string } & Record<string, unknown>; replayed?: boolean } | null;
 		lastStatus: unknown;
 		apiUrl: string;
 		guides: { href: string; text: string }[];
@@ -36,7 +36,7 @@
 <h3>What comes back</h3>
 {#if answer}
 	<Code
-		code={`HTTP ${answer.status}${(answer as { replayed?: boolean }).replayed ? '\nIdempotent-Replayed: true' : ''}\n${JSON.stringify(answer.body, null, 2)}`}
+		code={`HTTP ${answer.status}${answer.replayed ? '\nIdempotent-Replayed: true' : ''}\n${JSON.stringify(answer.body, null, 2)}`}
 		label="the answer"
 	/>
 {:else}
