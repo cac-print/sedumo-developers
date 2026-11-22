@@ -91,29 +91,41 @@
 		>
 			{#snippet intro()}
 				<p>
-					Use it when a flow should print: a new row in a SharePoint list or an Excel table, a Forms answer, an approval.
-					The flow’s <em>HTTP</em> action sends the same request as any app. It is a Premium action: the flow’s owner
-					needs Power Automate Premium, or the flow a Process licence.
+					Use it when a flow should print: a new item in a SharePoint list, a Forms answer (its values from
+					<em>Get response details</em>), an approval, a schedule. The flow’s <em>HTTP</em> action sends the same request
+					as any app. It is a Premium action: the people running the flow need Power Automate Premium, or the flow a
+					Process licence (a flow in a solution).
 				</p>
 				<h3>In the flow</h3>
 				<ol>
 					<li>Add the action <em>HTTP</em>: method <code>POST</code>, URI <code>{data.apiUrl}/print</code>.</li>
 					<li>
-						Headers: <code>Content-Type</code> <code>application/json</code> and <code>Authorization</code>
-						<code>Bearer</code> and the API token. Keep the token out of the flow’s steps: a secret environment variable
-						(Azure Key Vault) does.
+						Headers: <code>Content-Type</code> <code>application/json</code>, <code>Authorization</code> <code>Bearer</code>
+						and the API token, and <code>Idempotency-Key</code> <code>@{'{'}workflow().run.name{'}'}</code>, the run’s
+						name. The action tries again by itself after a timeout, a <code>408</code>, <code>429</code> or
+						<code>5xx</code> (up to four times); with the key Sedumo answers a retry with the first answer, and the label
+						prints once. A run that prints more than one label adds the item’s id to the key.
 					</li>
 					<li>
-						Body: the request below; put the trigger’s values in with dynamic content, e.g.
-						<code>"lot": "@{'{'}triggerBody()?['Lot']{'}'}"</code>.
+						Keep the token out of the flow: a secret environment variable (Azure Key Vault), read with Dataverse’s
+						<em>Perform an unbound action</em>, <em>RetrieveEnvironmentVariableSecretValue</em>. Turn on
+						<em>Secure outputs</em> on that action and <em>Secure inputs</em> on the HTTP action, so the run history doesn’t
+						show it.
+					</li>
+					<li>
+						Body: the request below; put the trigger’s values in with dynamic content: text in quotes,
+						<code>"lot": "@{'{'}triggerBody()?['Lot']{'}'}"</code>, a number without,
+						<code>"copies": @{'{'}triggerBody()?['Copies']{'}'}</code>.
 					</li>
 				</ol>
+				<p>What to type into the action’s fields, as its code view shows them:</p>
 				{#if request}<Code code={httpAction(request, data.apiUrl)} label="the HTTP action" />{/if}
 			{/snippet}
 			{#snippet notes()}
 				<p>
 					Sedumo answers at once with <code>201</code> and the <code>jobId</code>; a later step can follow the print with a
-					second HTTP action, <code>GET /print-jobs/{'{'}jobId{'}'}</code>. Each run counts toward the flow’s daily actions.
+					second HTTP action, <code>GET /print-jobs/{'{'}jobId{'}'}</code>. Each trigger and action that runs, retries too,
+					counts toward the licence’s Power Platform requests per 24 hours.
 				</p>
 			{/snippet}
 		</HowItWorks>

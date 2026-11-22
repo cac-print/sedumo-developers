@@ -7,5 +7,6 @@ describe('httpAction', () => {
 		const action = JSON.parse(httpAction(request, 'https://api.example'));
 		expect(action.inputs).toMatchObject({ method: 'POST', uri: 'https://api.example/print', body: request });
 		expect(action.inputs.headers['Content-Type']).toBe('application/json');
+		expect(action.inputs.headers['Idempotency-Key']).toBe('@{workflow().run.name}');
 	});
 });

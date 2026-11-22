@@ -9,7 +9,12 @@ export function httpAction(request: PrintRequest, apiUrl: string): string {
 			inputs: {
 				method: 'POST',
 				uri: `${apiUrl}/print`,
-				headers: { Authorization: 'Bearer <your Sedumo API token>', 'Content-Type': 'application/json' },
+				// The run's name as the Idempotency-Key: the action's own retries print once.
+				headers: {
+					Authorization: 'Bearer <your Sedumo API token>',
+					'Content-Type': 'application/json',
+					'Idempotency-Key': '@{workflow().run.name}'
+				},
 				body: request
 			}
 		},
