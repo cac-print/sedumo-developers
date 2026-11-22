@@ -31,6 +31,13 @@ describe('codeFor', () => {
 		expect(codeFor('abap', pdf)).toContain('encode_x_base64( pdf )');
 		expect(codeFor('xpp', pdf)).toContain('System.Convert::ToBase64String(pdf)');
 		expect(codeFor('al', pdf)).toContain('Base64Convert.ToBase64(PdfStream)');
+		// The Business Central page: one shipment's report; elsewhere your own PDF.
+		const report = codeFor('al', pdf, { alReport: true });
+		expect(report).toContain("Report.SaveAs(208, '', ReportFormat::Pdf, PdfOut, RecRef);");
+		expect(report).toContain('Shipment.SetRange("No.", ShipmentNo);');
+		expect(report).toContain('Shipment: Record "Sales Shipment Header";');
+		expect(codeFor('al', pdf)).not.toContain('Report.SaveAs(208');
+		expect(codeFor('al', pdf)).not.toContain('PdfOut: OutStream');
 		expect(codeFor('vba', pdf)).toContain('FileBase64(ThisWorkbook.Path & "\\document.pdf")');
 		for (const id of ['abap', 'xpp', 'al', 'vba'] as const) expect(codeFor(id, pdf), id).not.toContain('JVBERi0x');
 	});

@@ -27,7 +27,13 @@ export type Language = (typeof LANGUAGES)[number]['id'];
 /** The application a language runs in, when it runs only there (an ERP, Excel). */
 export const onlyIn = (language: Language) => (LANGUAGES.find((l) => l.id === language) as { onlyIn?: string } | undefined)?.onlyIn;
 
-export type CodeOptions = { path?: string; apiUrl?: string; headers?: Record<string, string> };
+export type CodeOptions = {
+	path?: string;
+	apiUrl?: string;
+	headers?: Record<string, string>;
+	// AL only: the PDF made by a Business Central report (the Business Central page); else your PDF goes in yourself.
+	alReport?: boolean;
+};
 
 /** The file a program reads when the request sends a PDF (or any file as base64). */
 export const PDF_FILE = 'document.pdf';
@@ -36,15 +42,15 @@ const PDF_MARK = `<${PDF_FILE} as base64>`;
 
 /** The request as a program in `language`. */
 export function codeFor(language: Language, request: PrintRequest, options: CodeOptions = {}): string {
-	const { path = '/print', apiUrl = API_URL, headers = {} } = options;
+	const { path = '/print', apiUrl = API_URL, headers = {}, alReport = false } = options;
 	const url = `${apiUrl}${path}`;
 	const pdf = 'content' in request.document && request.document.encoding === 'base64';
 	if (language === 'curl') return curlFor(request, path, apiUrl, headers);
 	const make = { csharp, vbnet, java, python, node, php, go, ruby, powershell, abap, xpp, al, vba }[language];
-	return make({ request, url, headers, pdf });
+	return make({ request, url, headers, pdf, alReport });
 }
 
-type Parts = { request: PrintRequest; url: string; headers: Record<string, string>; pdf: boolean };
+type Parts = { request: PrintRequest; url: string; headers: Record<string, string>; pdf: boolean; alReport?: boolean };
 
 // The request with the file's base64 left out: each language puts it in from `document.pdf`.
 const withMark = (request: PrintRequest): PrintRequest => ({ ...request, document: { ...request.document, content: PDF_MARK } as PrintRequest['document'] });
@@ -431,21 +437,38 @@ ${header}        message.Content = new System.Net.Http.StringContent(request, Sy
 const alText = (s: string) => `'${s.replace(/'/g, "''")}'`;
 
 function al(parts: Parts): string {
-	const { url, headers, pdf } = parts;
+	const { url, headers, pdf, alReport } = parts;
 	const lines = pieces(jsonText(parts))
 		.map((piece) => `            ${alText(piece)}`)
 		.join(' +\n');
 	const header = Object.entries(headers)
 		.map(([k, v]) => `        Client.DefaultRequestHeaders.Add(${alText(k)}, ${alText(v)});\n`)
 		.join('');
+	// A report's PDF for one document (the Business Central page), or your own PDF written into the Temp Blob.
+	const makePdf = alReport
+		? `        // One posted shipment from report 208, Business Central's Sales - Shipment: your report's number and
+        // record instead. The RecordRef keeps the report to that one document.
+        ShipmentNo := '102001';
+        Shipment.SetRange("No.", ShipmentNo);
+        RecRef.GetTable(Shipment);
+        TempBlob.CreateOutStream(PdfOut);
+        Report.SaveAs(208, '', ReportFormat::Pdf, PdfOut, RecRef);
+`
+		: `        // Your PDF into the Temp Blob first, e.g. Report.SaveAs(..., ReportFormat::Pdf, PdfOut, RecRef) with
+        // TempBlob.CreateOutStream(PdfOut).
+`;
 	const file = pdf
-		? `        // The PDF from your report, e.g. Report.SaveAs(..., ReportFormat::Pdf, ...) into a Temp Blob.
-        TempBlob.CreateInStream(PdfStream);
+		? `${makePdf}        TempBlob.CreateInStream(PdfStream);
         Body := Body.Replace(${alText(PDF_MARK)}, Base64Convert.ToBase64(PdfStream));
 `
 		: '';
-	const pdfVars = pdf ? `        Base64Convert: Codeunit "Base64 Convert";\n        TempBlob: Codeunit "Temp Blob";\n        PdfStream: InStream;\n` : '';
-	return `// Dynamics 365 Business Central: a codeunit in your extension. The token kept in Isolated Storage
+	const pdfVars = pdf
+		? `        Base64Convert: Codeunit "Base64 Convert";\n        TempBlob: Codeunit "Temp Blob";\n${
+				alReport ? `        Shipment: Record "Sales Shipment Header";\n        RecRef: RecordRef;\n        ShipmentNo: Code[20];\n        PdfOut: OutStream;\n` : ''
+			}        PdfStream: InStream;\n`
+		: '';
+	return `// Dynamics 365 Business Central: a codeunit in your extension. Its calls out are off until an admin turns on
+// Allow HttpClient Requests for it (Extension Management > Configure). The token kept in Isolated Storage
 // (IsolatedStorage.Set('SedumoToken', ..., DataScope::Company) once, from a setup page).
 codeunit 50100 "Sedumo Print"
 {

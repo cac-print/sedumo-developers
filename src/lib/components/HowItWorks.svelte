@@ -3,6 +3,7 @@
 	import Code from './Code.svelte';
 	import RequestCode from './RequestCode.svelte';
 	import { curlFor, type PrintRequest } from '#lib/print-request.ts';
+	import { codeFor, onlyIn, type Language } from '#lib/code.ts';
 
 	// The right column of an example: when to use it, the request in the reader's language, Sedumo's answer, and
 	// following the print.
@@ -16,7 +17,8 @@
 		notes,
 		headers = {},
 		path = '/print',
-		codeTabs = true
+		codeTabs = true,
+		only
 	}: {
 		request: PrintRequest | null;
 		answer: { status: number; body: { jobId?: string } & Record<string, unknown>; replayed?: boolean } | null;
@@ -30,6 +32,8 @@
 		path?: string;
 		// The request in every language; false when another system sends it (Dynamics 365): curl only, as it's sent.
 		codeTabs?: boolean;
+		// One language only, no tabs: the page is about it (AL on the Business Central page).
+		only?: Language;
 	} = $props();
 	// Queued: 201, or 200 when asked for.
 	const jobId = $derived(answer && answer.status >= 200 && answer.status < 300 ? answer.body.jobId : undefined);
@@ -40,7 +44,10 @@
 
 <h3>The request</h3>
 {#if request}
-	{#if codeTabs}<RequestCode {request} {apiUrl} {headers} {path} />
+	{#if only}
+		<Code code={codeFor(only, request, { apiUrl, headers, path, alReport: only === 'al' })} label="the code" />
+		{#if onlyIn(only)}<p class="small">For {onlyIn(only)}. Not run in our checks: it runs only inside {onlyIn(only)}.</p>{/if}
+	{:else if codeTabs}<RequestCode {request} {apiUrl} {headers} {path} />
 	{:else}<Code code={curlFor(request, path, apiUrl, headers)} label="the request" />{/if}
 {/if}
 {#if notes}<div class="small">{@render notes()}</div>{/if}

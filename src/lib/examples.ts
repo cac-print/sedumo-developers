@@ -19,6 +19,14 @@ export const EXAMPLES: Example[] = [
 	{ slug: 'pdf-form', title: 'A PDF form', group: 'Your own files', summary: 'A PDF whose fields take the print’s values.', guide: '/guides/api#4-print', ready: true },
 	{ slug: 'oracle-xml', title: 'Oracle WMS XML', group: 'Integrations', summary: 'The XML your warehouse system already sends.', guide: '/guides/api#7-print-a-file-you-made-yourself', ready: true },
 	{
+		slug: 'business-central',
+		title: 'Business Central documents',
+		group: 'Integrations',
+		summary: 'A report from Business Central, as a PDF, from AL.',
+		guide: '/guides/api#7-print-a-file-you-made-yourself',
+		ready: true
+	},
+	{
 		slug: 'dynamics-fo',
 		title: 'Dynamics 365 F&O labels',
 		group: 'Integrations',
