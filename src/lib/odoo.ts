@@ -1,15 +1,19 @@
 // An Odoo module that prints a label from a delivery order: a "Print label" button calls Sedumo from Odoo's server
 // with `requests` (an Odoo server action can't call out). The request is the page's, written into the code; the
 // token and the printer are Odoo system parameters.
-import { pythonValue } from './code.ts';
+import { pythonString, pythonValue } from './code.ts';
 import type { PrintRequest } from './print-request.ts';
 
 export type OdooFile = { path: string; code: string };
 
 export function odooModule(request: PrintRequest, apiUrl: string): OdooFile[] {
-	// The printer comes from the system parameter, so the body in the code names it from there.
-	const { printerId: _printerId, ...rest } = request;
-	const body = pythonValue(rest, 3).replace(/^\{\n/, '{\n                "printerId": printer,\n');
+	// The printer comes from the system parameters and who prints is the Odoo user, so the body names them from there,
+	// never the page's own.
+	const { printerId: _printerId, onBehalfOf: _onBehalfOf, ...rest } = request;
+	const body = pythonValue(rest, 2).replace(
+		/^\{\n/,
+		'{\n            "printerId": printer,\n            "onBehalfOf": {"id": str(self.env.user.id), "name": self.env.user.name},\n'
+	);
 	return [
 		{
 			path: 'sedumo_print/__manifest__.py',
@@ -37,26 +41,34 @@ class StockPicking(models.Model):
     _inherit = "stock.picking"
 
     def action_sedumo_print(self):
+        # A button on one delivery order.
+        self.ensure_one()
         # Settings > Technical > System Parameters (developer mode): the API token and the printer's id in Sedumo.
         params = self.env["ir.config_parameter"].sudo()
         token = params.get_param("sedumo.token")
         printer = params.get_param("sedumo.printer_id")
         if not token or not printer:
             raise UserError(_("Set sedumo.token and sedumo.printer_id in the system parameters."))
-        for picking in self:
-            # The request: your fields go in as values, e.g. picking.name, picking.partner_id.name.
-            body = ${body}
+        # The request: your fields go in as values, e.g. self.name, self.partner_id.name. Who prints: the Odoo user.
+        body = ${body}
+        try:
             response = requests.post(
-                "${apiUrl}/print",
+                ${pythonString(`${apiUrl}/print`)},
                 json=body,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=30,
             )
+        except requests.RequestException as error:
+            # No answer: it may or may not be queued, so look before printing again.
+            raise UserError(_("No answer from Sedumo (%s). Look in Sedumo's print history before printing again.", error))
+        try:
             answer = response.json()
-            if response.status_code != 201:
-                # Refused: Sedumo says why.
-                raise UserError(_("Sedumo didn't print it: %s", answer.get("message", response.text)))
-            picking.message_post(body=_("Label sent to Sedumo, job %s", answer["jobId"]))
+        except ValueError:
+            answer = {}
+        if response.status_code != 201:
+            # Refused: Sedumo says why.
+            raise UserError(_("Sedumo didn't print it: %s", answer.get("message") or response.text[:300]))
+        self.message_post(body=_("Label sent to Sedumo, job %s", answer["jobId"]))
 `
 		},
 		{
@@ -69,7 +81,8 @@ class StockPicking(models.Model):
         <field name="inherit_id" ref="stock.view_picking_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="action_sedumo_print" type="object" string="Print label"/>
+                <button name="action_sedumo_print" type="object" string="Print label"
+                        invisible="picking_type_code != 'outgoing' or state == 'cancel'"/>
             </xpath>
         </field>
     </record>

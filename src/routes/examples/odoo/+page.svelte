@@ -115,7 +115,9 @@
 			{#snippet notes()}
 				<p>
 					Sedumo answers at once with <code>201</code> and the <code>jobId</code>, which the module writes in the delivery
-					order’s chatter; a refusal shows as Odoo’s error with Sedumo’s reason.
+					order’s chatter; a refusal shows as Odoo’s error with Sedumo’s reason. Without an answer (a timeout) the label
+					may have printed: look in Sedumo’s print history before pressing again. The button is on delivery orders that
+					aren’t cancelled; Sedumo’s print history shows the Odoo user who pressed it.
 				</p>
 			{/snippet}
 		</HowItWorks>

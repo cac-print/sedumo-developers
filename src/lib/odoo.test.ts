@@ -18,5 +18,13 @@ describe('odooModule', () => {
 		expect(model).not.toContain('"p1"');
 		expect(model).toContain('"lot": "L\\"1"');
 		expect(model).toContain('"https://api.example/print"');
+		expect(model).toContain('"onBehalfOf": {"id": str(self.env.user.id), "name": self.env.user.name},');
+	});
+	it('leaves out who printed on the page: the Odoo user prints', () => {
+		const withWho = odooModule(
+			{ document: { path: 'a' }, printerId: 'p1', data: { values: {} }, onBehalfOf: { id: 'web1', name: 'Ana' } },
+			'https://api.example'
+		).find((f) => f.path.endsWith('stock_picking.py'))?.code;
+		expect(withWho).not.toContain('Ana');
 	});
 });

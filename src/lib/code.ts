@@ -112,6 +112,9 @@ const PYTHON: Literals = {
 	indent: '    '
 };
 
+/** A string as a Python literal (the Odoo module's URL). */
+export const pythonString = (text: string) => quoted(text);
+
 /** A value as a Python literal, indented `depth` levels (the Odoo module writes the request into its code). */
 export const pythonValue = (value: unknown, depth = 0) => literal(value, PYTHON, depth);
 
