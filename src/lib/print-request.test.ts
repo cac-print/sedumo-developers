@@ -33,8 +33,14 @@ describe('requestProblem, ZPL as base64', () => {
 		expect(requestProblem(zpl('^XA^FDx^FS^XZ'))).toBeNull();
 		expect(requestProblem(zpl('^XA^FDx^FS^PQ500^XZ'))).toMatch(/\^PQ/);
 	});
-	it('leaves a PDF’s size as its only limit', () => {
-		expect(requestProblem(zpl('%PDF-1.7 ^PQ500'))).toBeNull();
+	it('counts ZPL in a file that starts like a PDF, and a PDF without ^XA as one label', () => {
+		expect(requestProblem(zpl('%PDF-1.7\n^XA^FDx^FS^PQ500^XZ'))).toMatch(/\^PQ/);
+		expect(requestProblem(zpl('%PDF-1.7\n%%EOF'))).toBeNull();
+	});
+	it('refuses content that isn’t plain base64, which Sedumo might read more leniently', () => {
+		const sent = zpl('^XA^FDx^FS^PQ500^XZ');
+		for (const content of [`${sent.document.content}*`, ' eA==', 'eA=', 'e A=='])
+			expect(requestProblem({ ...sent, document: { ...sent.document, content } }), content).toMatch(/plain base64/);
 	});
 });
 

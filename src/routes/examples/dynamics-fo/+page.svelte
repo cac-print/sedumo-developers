@@ -5,6 +5,7 @@
 	import PrintBox from '#lib/components/PrintBox.svelte';
 	import { base64Of, fillLayout, FO_BODY, layoutFields } from '#lib/fo-layout.ts';
 	import type { PrintRequest } from '#lib/print-request.ts';
+	import { SvelteMap } from 'svelte/reactivity';
 
 	let { data } = $props();
 
@@ -20,7 +21,13 @@
 			'^XZ'
 		].join('\n')
 	);
-	let values = $state<Record<string, string>>({ LicensePlateId: 'LP-000123', ItemId: 'A0001', Qty: '24', Unit: 'pcs' });
+	// A Map, so a field may be named anything ($constructor$ too).
+	const values = new SvelteMap<string, string>([
+		['LicensePlateId', 'LP-000123'],
+		['ItemId', 'A0001'],
+		['Qty', '24'],
+		['Unit', 'pcs']
+	]);
 	let answer = $state(null);
 	let lastStatus = $state<unknown>(null);
 
@@ -62,7 +69,7 @@
 			<textarea rows="9" bind:value={layout} spellcheck="false"></textarea>
 		</label>
 		{#each fields as field (field)}
-			<label>{field} <input bind:value={values[field]} /></label>
+			<label>{field} <input bind:value={() => values.get(field) ?? '', (value) => values.set(field, value)} /></label>
 		{/each}
 
 		<PrintBox {request} size={null} preview={false} successStatus={200} bind:answer bind:lastStatus />

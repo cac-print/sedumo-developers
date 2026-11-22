@@ -68,7 +68,7 @@
 
 <button class="print" type="button" disabled={!sendable || sending} onclick={print}>{sending ? 'Sending…' : 'Print'}</button>
 
-{#if answer && answer.status !== 201}
+{#if answer && (answer.status < 200 || answer.status >= 300)}
 	<p class="refused" role="alert"><strong>Refused ({answer.status})</strong>: {String(answer.body.message ?? 'see the answer')}</p>
 {/if}
 {#if answer?.replayed}

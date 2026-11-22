@@ -6,8 +6,9 @@ describe('F&O label layouts', () => {
 	it('finds each field once, in order', () => {
 		expect(layoutFields(layout)).toEqual(['LicensePlateId', 'ItemId']);
 	});
-	it('fills each field, an unknown one empty', () => {
-		expect(fillLayout(layout, { LicensePlateId: 'LP1' })).toBe('^XA^FDLP1^FS^FD LP1^FS^XZ');
+	it('fills each field, an unknown one empty, whatever its name', () => {
+		expect(fillLayout(layout, new Map([['LicensePlateId', 'LP1']]))).toBe('^XA^FDLP1^FS^FD LP1^FS^XZ');
+		expect(fillLayout('^FD$constructor$ $toString$^FS', new Map())).toBe('^FD ^FS');
 	});
 	it('sends UTF-8 as base64', () => {
 		expect(new TextDecoder().decode(Uint8Array.from(atob(base64Of('č ^FH\\')), (c) => c.charCodeAt(0)))).toBe('č ^FH\\');

@@ -6,8 +6,9 @@ const FIELD = /\$([A-Za-z_][A-Za-z0-9_.]*)\$/g;
 /** The fields a layout names, in order, each once. */
 export const layoutFields = (layout: string) => [...new Set([...layout.matchAll(FIELD)].map((m) => m[1]))];
 
-/** The layout with each `$Field$` replaced by its value, as F&O fills it. */
-export const fillLayout = (layout: string, values: Record<string, string>) => layout.replace(FIELD, (_, name: string) => values[name] ?? '');
+/** The layout with each `$Field$` replaced by its value, as F&O fills it. A Map, so a field may be named anything. */
+export const fillLayout = (layout: string, values: ReadonlyMap<string, string>) =>
+	layout.replace(FIELD, (_, name: string) => values.get(name) ?? '');
 
 /** UTF-8 text as base64. */
 export function base64Of(text: string): string {
