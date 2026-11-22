@@ -27,6 +27,14 @@ export const EXAMPLES: Example[] = [
 		ready: true
 	},
 	{
+		slug: 'power-automate',
+		title: 'Power Automate',
+		group: 'Integrations',
+		summary: 'A flow prints a label with its HTTP action.',
+		guide: '/guides/api#4-print',
+		ready: true
+	},
+	{
 		slug: 'dynamics-fo',
 		title: 'Dynamics 365 F&O labels',
 		group: 'Integrations',
