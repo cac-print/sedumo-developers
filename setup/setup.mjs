@@ -25,13 +25,15 @@ async function call(method, path, body) {
 	return text ? JSON.parse(text) : null;
 }
 
-// The account's documents at the top level, by name. Lists come bare or wrapped.
-const listed = await call('GET', '/documents');
-const documents = Array.isArray(listed) ? listed : (listed.documents ?? []);
-const atTop = new Map(documents.filter((d) => !d.path.includes('/')).map((d) => [d.name, d]));
+// The account's documents at the top level, by name as Sedumo compares names: any case, Unicode normalized.
+const key = (name) => name.normalize('NFC').toLowerCase();
+const listed = await call('GET', '/documents?folderId=root');
+const documents = Array.isArray(listed) ? listed : listed?.documents;
+if (!Array.isArray(documents)) throw new Error('GET /documents: not a list of documents');
+const atTop = new Map(documents.map((d) => [key(d.name), d]));
 
 for (const [name, label] of Object.entries(LABELS)) {
-	const existing = atTop.get(`${name}.template`);
+	const existing = atTop.get(key(`${name}.template`));
 	const content = { ...label, dpis: [203, 300, 600] };
 	if (!existing) {
 		await call('POST', '/designer/templates', { name, ...content });
@@ -44,7 +46,7 @@ for (const [name, label] of Object.entries(LABELS)) {
 	}
 }
 
-const missing = FILES.filter((f) => !atTop.has(f.name));
+const missing = FILES.filter((f) => !atTop.has(key(f.name)));
 for (const f of FILES) if (!missing.includes(f)) console.log(`${f.name}: already there`);
 if (missing.length) {
 	console.log('\nUpload these once in Sedumo (Documents → Upload, at the top level), from setup/files/:');

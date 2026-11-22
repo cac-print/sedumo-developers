@@ -6,9 +6,9 @@
 	const token = `curl https://api.sedumo.com/printers -H "Authorization: Bearer $SEDUMO_TOKEN"`;
 	const print = `curl https://api.sedumo.com/print -H "Authorization: Bearer $SEDUMO_TOKEN" \\
   -H "Content-Type: application/json" -d '{
-  "document": { "path": "Dispatch/Pallet label.template" },
+  "document": { "path": "Product label.template" },
   "printerId": "<printer id>",
-  "data": { "values": { "product": "Milk 1 l", "lot": "L2026-10" }, "copies": 2 }
+  "data": { "values": { "product": "Milk 1 l", "best_before": "2026-12-10", "lot": "L2026-10" }, "copies": 2 }
 }'`;
 	const follow = `curl https://api.sedumo.com/print-jobs/<jobId> -H "Authorization: Bearer $SEDUMO_TOKEN"`;
 </script>

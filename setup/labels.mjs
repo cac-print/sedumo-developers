@@ -29,7 +29,7 @@ export const LABELS = {
 			ean: { caption: 'EAN-13' }
 		}
 	},
-	// 100 x 150 mm, on each pallet: a GS1-128 barcode, and a serial for a series of labels.
+	// 100 x 150 mm, on each pallet: a GS1-128 barcode. The series example counts its pallet number.
 	'Pallet label': {
 		layout: {
 			widthMm: 100,
@@ -54,7 +54,7 @@ export const LABELS = {
 					yMm: 80,
 					value: '(01){{gtin}}(10){{lot}}(37){{qty}}(21){{serial}}',
 					heightMm: 28,
-					moduleWidthMm: 0.33
+					moduleWidthMm: 0.25
 				}
 			]
 		},
@@ -63,7 +63,7 @@ export const LABELS = {
 			product: { caption: 'Product', required: true },
 			gtin: { caption: 'GTIN (14 digits)', required: true },
 			lot: { caption: 'Lot', required: true },
-			qty: { caption: 'Cases on the pallet', input: 'number', required: true },
+			qty: { caption: 'Cases on the pallet', required: true, help: 'A whole number: GS1 allows only digits here' },
 			serial: { caption: 'Pallet number', required: true }
 		}
 	}
