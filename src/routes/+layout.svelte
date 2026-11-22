@@ -9,6 +9,7 @@
 	const sections = [
 		{ href: '/', title: 'Start' },
 		{ href: '/guides', title: 'Guides' },
+		{ href: '/examples', title: 'Examples' },
 		{ href: '/search', title: 'Search' }
 	];
 	const here = (href: string) =>

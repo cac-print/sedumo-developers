@@ -42,9 +42,12 @@ jobs:
           npm test
           npm run build:cloudflare
           npx wrangler deploy
+          # The examples' token, as the Worker's secret (never in the code or the log).
+          printf '%s' "$SEDUMO_TOKEN" | npx wrangler secret put SEDUMO_TOKEN
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          SEDUMO_TOKEN: ${{ secrets.SEDUMO_TOKEN }}
       - if: github.event_name != 'schedule' || steps.seen.outputs.cache-hit != 'true'
         run: mkdir -p .deployed && echo "$SEDUMO_DOCS_VERSION" > .deployed/manual
       - if: github.event_name != 'schedule' || steps.seen.outputs.cache-hit != 'true'
