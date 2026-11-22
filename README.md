@@ -40,6 +40,13 @@ stay readable at [developers.sedumo.com/guides](https://developers.sedumo.com/gu
 `references/api.md` for the details). The build publishes it at `/skills/sedumo/` and as `/skills/sedumo.zip`; the
 page `/skill` says how to add it. After editing the skill, restart `npm run dev` to see the change there.
 
+## The code in eight languages
+
+Each example shows its request in curl, C#, Java, Python, Node.js, PHP, Go and ABAP (`src/lib/code.ts`), made from the
+same request the page sends. `node scripts/run-code.ts` runs every one but ABAP and checks that each sends exactly that
+request, to a local server; with `SEDUMO_TOKEN` (and `SEDUMO_API_URL`) also against Sedumo, where each print must be
+queued. It uses each language's own tools, or with `--docker` their official images.
+
 ## Search
 
 `npm run build` builds the site, makes a search index of its pages with [Pagefind](https://pagefind.app), and builds
