@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { guideHref } from '#lib/guides.ts';
-	import { PATHS } from '#lib/paths.ts';
+	import { guideHref, PATHS } from '#lib/paths.ts';
+	let { data } = $props();
+	const guide = (href: string) => guideHref(data.guidesBuilt, href);
 
 	const token = `curl https://api.sedumo.com/printers -H "Authorization: Bearer $SEDUMO_TOKEN"`;
 	const print = `curl https://api.sedumo.com/print -H "Authorization: Bearer $SEDUMO_TOKEN" \\
@@ -56,7 +57,7 @@
 				<p>Until it is <code>completed</code>, or <code>failed</code> with the reason.</p>
 			</li>
 		</ol>
-		<p><a href={guideHref('/guides/api')}>The API guide</a> explains each step, with every option.</p>
+		<p><a href={guide('/guides/api')}>The API guide</a> explains each step, with every option.</p>
 	</section>
 
 	<section aria-labelledby="paths">
@@ -64,7 +65,7 @@
 		<ul class="cards">
 			{#each PATHS as path (path.href)}
 				<li>
-					<a href={guideHref(path.href)}>
+					<a href={guide(path.href)}>
 						<strong>{path.title}</strong>
 						<span>{path.text}</span>
 					</a>
@@ -77,7 +78,7 @@
 		<h2 id="reference">Reference</h2>
 		<ul class="plain">
 			<li><a href="https://api.sedumo.com/docs">Every route of the API</a>, with its request and answer.</li>
-			<li><a href={guideHref('/guides/limits')}>Limits</a>: every size, count and period, and what depends on your plan.</li>
+			<li><a href={guide('/guides/limits')}>Limits</a>: every size, count and period, and what depends on your plan.</li>
 			<li><a href="https://status.sedumo.com">Status</a>: whether Sedumo is up, and any planned maintenance.</li>
 		</ul>
 	</section>

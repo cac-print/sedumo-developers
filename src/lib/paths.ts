@@ -33,3 +33,8 @@ export const PATHS: Path[] = [
 		href: '/guides/ai-assistants'
 	}
 ];
+
+/** A link to a guide: its page here, or on developers.sedumo.com when this copy was built without the guides. */
+export function guideHref(built: boolean, href: string): string {
+	return built ? href : `https://developers.sedumo.com${href}`;
+}

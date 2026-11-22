@@ -1,10 +1,20 @@
 // Renders a guide from Sedumo's manual: headings get GitHub's anchors (the manual links to them), links to another
 // guide point at its page here, and links to manual pages this site doesn't show become plain text.
-import { Marked, type Tokens } from 'marked';
+import { Marked, type Token, type Tokens } from 'marked';
 import { gfmHeadingId, getHeadingList } from 'marked-gfm-heading-id';
 
 export type Section = { id: string; text: string };
 export type RenderedGuide = { title: string; html: string; sections: Section[] };
+
+/** A heading's text without its Markdown: what a reader sees, with `&` and quotes as they are. */
+function plainText(tokens: Token[]): string {
+	return tokens
+		.map((t) => ('tokens' in t && t.tokens ? plainText(t.tokens) : 'text' in t ? decode(String(t.text)) : ''))
+		.join('');
+}
+
+const decode = (text: string) =>
+	text.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
 const escape = (text: string) =>
 	text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -25,8 +35,14 @@ export function renderGuide(source: string, guidePaths: Record<string, string>):
 	const title = match ? match[1].trim() : '';
 	const body = match ? source.replace(match[0], '') : source;
 
+	// The second-level headings' plain text, in order, for "On this page" (the heading list keeps only their anchors
+	// reliably: it drops characters such as & from the text).
+	const titles: string[] = [];
 	const marked = new Marked(gfmHeadingId(), {
 		gfm: true,
+		walkTokens(token) {
+			if (token.type === 'heading' && token.depth === 2) titles.push(plainText(token.tokens ?? []));
+		},
 		renderer: {
 			link(token: Tokens.Link) {
 				const text = this.parser.parseInline(token.tokens);
@@ -50,6 +66,6 @@ export function renderGuide(source: string, guidePaths: Record<string, string>):
 	const html = marked.parse(body, { async: false }) as string;
 	const sections = getHeadingList()
 		.filter((h) => h.level === 2)
-		.map((h) => ({ id: h.id, text: h.raw }));
+		.map((h, i) => ({ id: h.id, text: titles[i] ?? h.raw }));
 	return { title, html, sections };
 }

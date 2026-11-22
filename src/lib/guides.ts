@@ -60,7 +60,3 @@ export function loadGuide(slug: string): (RenderedGuide & { guide: Guide }) | nu
 	return guide && source ? { guide, ...renderGuide(source, guidePaths) } : null;
 }
 
-/** A link to a guide: its page here, or on developers.sedumo.com when this copy was built without the guides. */
-export function guideHref(href: string): string {
-	return hasGuides() ? href : `https://developers.sedumo.com${href}`;
-}

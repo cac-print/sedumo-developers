@@ -32,7 +32,9 @@ describe('renderGuide', () => {
 		'',
 		'### From a browser app on another PC',
 		'',
-		'## 9. Errors'
+		'## 9. Errors',
+		'',
+		'## Labels & `printers` "now"'
 	].join('\n');
 	const guide = renderGuide(md, { ...paths, 'limits.md': '/guides/limits' });
 
@@ -45,7 +47,8 @@ describe('renderGuide', () => {
 		expect(guide.html).toContain('id="from-a-browser-app-on-another-pc"');
 		expect(guide.sections).toEqual([
 			{ id: '1-get-a-token', text: '1. Get a token' },
-			{ id: '9-errors', text: '9. Errors' }
+			{ id: '9-errors', text: '9. Errors' },
+			{ id: 'labels--printers-now', text: 'Labels & printers "now"' }
 		]);
 	});
 	it('rewrites links between guides and drops links to pages not shown', () => {

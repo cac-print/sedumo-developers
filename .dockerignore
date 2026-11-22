@@ -4,3 +4,5 @@ build
 .git
 .wrangler
 .env
+.env.*
+!.env.example

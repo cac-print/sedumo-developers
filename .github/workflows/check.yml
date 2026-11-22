@@ -19,6 +19,8 @@ jobs:
       - name: Fetch Sedumo's manual
         env:
           SEDUMO_DOCS_KEY: ${{ secrets.SEDUMO_DOCS_KEY }}
+          SEDUMO_DOCS_REPO: ${{ vars.SEDUMO_DOCS_REPO }}
+          SEDUMO_DOCS_PATH: ${{ vars.SEDUMO_DOCS_PATH }}
         run: bash scripts/fetch-manual.sh
       - run: npm ci
       - run: npm run guides

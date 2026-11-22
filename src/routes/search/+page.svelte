@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { replaceState } from '$app/navigation';
+	import { page } from '$app/state';
 
 	type Result = { url: string; title: string; excerpt: string };
 	type Pagefind = {
@@ -10,17 +12,20 @@
 
 	let query = $state('');
 	let results = $state<Result[]>([]);
+	// The query whose results are shown, once its search has finished.
+	let searched = $state('');
 	let ready = $state<boolean | null>(null);
+	let failed = $state(false);
 	let pagefind: Pagefind | null = null;
 
 	onMount(async () => {
-		query = new URL(location.href).searchParams.get('q') ?? '';
+		query = page.url.searchParams.get('q') ?? '';
 		try {
 			// The index is made when the site is built (`npm run build`), so the dev server has none.
 			const path = '/pagefind/pagefind.js';
 			pagefind = (await import(/* @vite-ignore */ path)) as Pagefind;
 			ready = true;
-			if (query) await run();
+			if (query.trim()) await run();
 		} catch {
 			ready = false;
 		}
@@ -30,11 +35,18 @@
 	async function run() {
 		if (!pagefind) return;
 		const asked = ++last;
-		const found = query.trim() ? await pagefind.search(query.trim()) : null;
-		const data = found ? await Promise.all(found.results.slice(0, 20).map((r) => r.data())) : [];
-		if (asked !== last) return;
-		results = data.map((d) => ({ url: d.url.replace(/\.html$/, ''), title: d.meta.title ?? d.url, excerpt: d.excerpt }));
-		history.replaceState(history.state, '', query ? `?q=${encodeURIComponent(query)}` : location.pathname);
+		const q = query.trim();
+		try {
+			const found = q ? await pagefind.search(q) : null;
+			const data = found ? await Promise.all(found.results.slice(0, 20).map((r) => r.data())) : [];
+			if (asked !== last) return;
+			results = data.map((d) => ({ url: d.url.replace(/\.html$/, ''), title: d.meta.title ?? d.url, excerpt: d.excerpt }));
+			searched = q;
+			failed = false;
+		} catch {
+			if (asked === last) failed = true;
+		}
+		replaceState(q ? `?q=${encodeURIComponent(q)}` : page.url.pathname, page.state);
 	}
 </script>
 
@@ -49,8 +61,10 @@
 
 	{#if ready === false}
 		<p class="muted">Search works once the site is built (<code>npm run build</code>).</p>
-	{:else if query.trim() && ready && results.length === 0}
-		<p class="muted">Nothing found for “{query}”.</p>
+	{:else if failed}
+		<p class="muted">Search didn’t work. Try again.</p>
+	{:else if searched && searched === query.trim() && results.length === 0}
+		<p class="muted">Nothing found for “{searched}”.</p>
 	{/if}
 
 	<ol>
