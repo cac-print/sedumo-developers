@@ -15,8 +15,9 @@
 		async function ask() {
 			const response = await fetch(`/examples/jobs/${encodeURIComponent(id)}`).catch(() => null);
 			if (stopped) return;
-			if (response?.ok) {
-				const body = (await response.json()) as Status;
+			const body = response?.ok ? ((await response.json().catch(() => null)) as Status | null) : null;
+			if (stopped) return;
+			if (body) {
 				current = body;
 				onstatus?.(body);
 				if (body.status === 'completed' || body.status === 'failed') return;

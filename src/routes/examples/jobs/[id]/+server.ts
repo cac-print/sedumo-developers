@@ -7,7 +7,7 @@ export const GET = async ({ params }) => {
 	try {
 		return json(await sedumo().job(params.id), { headers: { 'Cache-Control': 'no-store' } });
 	} catch (e) {
-		if (e instanceof SedumoError) return json(e.body, { status: e.status });
+		if (e instanceof SedumoError) return json({ message: e.reason }, { status: e.status });
 		throw e;
 	}
 };

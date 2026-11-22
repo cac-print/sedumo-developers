@@ -3,7 +3,7 @@
 	import Code from '#lib/components/Code.svelte';
 	import Preview from '#lib/components/Preview.svelte';
 	import PrintStatus from '#lib/components/PrintStatus.svelte';
-	import { cleanRequest, curlFor, type DocumentRef, type PrintRequest } from '#lib/print-request.ts';
+	import { cleanRequest, curlFor, LIMITS, type DocumentRef, type PrintRequest } from '#lib/print-request.ts';
 	import { printerState } from '#lib/printer-status.ts';
 	import { onMount } from 'svelte';
 
@@ -54,7 +54,10 @@
 			? cleanRequest({
 					document: documentRef,
 					printerId: printer.id,
-					data: { values: Object.fromEntries(variables.map((v) => [v.name, values[v.name] ?? ''])), copies },
+					data: {
+						values: Object.fromEntries(variables.map((v) => [v.name, values[v.name] ?? ''])),
+						copies: Math.min(Math.max(Math.round(Number(copies) || 1), 1), LIMITS.copies)
+					},
 					onBehalfOf: who.name ? { id: who.id, name: who.name } : undefined,
 					settings: { darkness, speedMmS: speed }
 				})
@@ -81,7 +84,12 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(request)
 			});
-			answer = response.ok ? await response.json() : { status: response.status, body: { message: 'This site couldn’t send it.' } };
+			answer = await response.json().then(
+				(body) => (response.ok ? body : { status: response.status, body }),
+				() => ({ status: response.status, body: { message: 'This site couldn’t send it.' } })
+			);
+		} catch {
+			answer = { status: 0, body: { message: 'This site couldn’t reach its server. It may or may not have printed.' } };
 		} finally {
 			sending = false;
 		}
@@ -98,6 +106,9 @@
 	<section class="try" aria-labelledby="try">
 		<h1 id="try">Print a label</h1>
 		<p class="lead">A label designed in Sedumo, a printer, and the values to put on it: one request.</p>
+		{#if data.problem}
+			<p class="refused">{data.problem}</p>
+		{/if}
 		{#if data.noToken}
 			<p class="refused">This copy of the site has no Sedumo token. Set <code>SEDUMO_TOKEN</code> on its server (see the README).</p>
 		{/if}
@@ -151,7 +162,7 @@
 		{/each}
 
 		<div class="row">
-			<label>Copies <input type="number" min="1" max="99" bind:value={copies} /></label>
+			<label>Copies <input type="number" min="1" max={LIMITS.copies} bind:value={copies} /></label>
 			<label>Your name <input bind:value={who.name} placeholder="Shown in Sedumo’s print history" /></label>
 		</div>
 
@@ -190,7 +201,7 @@
 
 		<h3>The request</h3>
 		{#if request}
-			<Code code={curlFor(request)} label="the request" />
+			<Code code={curlFor(request, '/print', data.apiUrl)} label="the request" />
 		{/if}
 		<p class="small">
 			From your server, with your token. A value left out prints empty; a required one left out, or a choice not on
@@ -207,7 +218,7 @@
 		{#if jobId}
 			<h3>Follow it</h3>
 			<Code
-				code={`curl https://api.sedumo.com/print-jobs/${jobId} \\\n  -H "Authorization: Bearer $SEDUMO_TOKEN"${lastStatus ? `\n\n${JSON.stringify(lastStatus, null, 2)}` : ''}`}
+				code={`curl ${data.apiUrl}/print-jobs/${jobId} \\\n  -H "Authorization: Bearer $SEDUMO_TOKEN"${lastStatus ? `\n\n${JSON.stringify(lastStatus, null, 2)}` : ''}`}
 				label="the status request"
 			/>
 		{/if}

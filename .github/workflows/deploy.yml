@@ -42,8 +42,8 @@ jobs:
           npm test
           npm run build:cloudflare
           npx wrangler deploy
-          # The examples' token, as the Worker's secret (never in the code or the log).
-          printf '%s' "$SEDUMO_TOKEN" | npx wrangler secret put SEDUMO_TOKEN
+          # The examples' token, as the Worker's secret (never in the code or the log); never replaced by an empty one.
+          if [ -n "$SEDUMO_TOKEN" ]; then printf '%s' "$SEDUMO_TOKEN" | npx wrangler secret put SEDUMO_TOKEN; fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

@@ -9,7 +9,11 @@
 	let problem = $state<string | null>(null);
 	$effect(() => {
 		const body = request ? JSON.stringify(request) : null;
-		if (!body) return;
+		if (!body) {
+			src = null;
+			problem = null;
+			return;
+		}
 		let image: string | null = null;
 		const controller = new AbortController();
 		const timer = setTimeout(async () => {

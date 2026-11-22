@@ -6,8 +6,9 @@ internals.
 
 - **The guides' text is Sedumo's manual**, fetched when the site is built (`npm run guides`). Never edit it here; a
   fix goes into Sedumo's manual.
-- **Sedumo's token stays on the server** (`src/lib/server/`, `$env/dynamic/private`). Never send it, or Sedumo's raw
-  answers with it, to the browser, and never log it.
+- **Sedumo's token stays on the server** (`src/lib/server/`, `$app/env/private`): never in the browser, a response or
+  a log. The examples may show Sedumo's answers (they never carry the token); the server takes from the browser only
+  what a page sends (`requestProblem`).
 - **Texts are written like Sedumo's manual:** plain words, the names on Sedumo's screens exactly as they are, no issue
   numbers or internal names, only public links.
 - Before pushing: `npm run check`, `npm test`, `npm run build`.

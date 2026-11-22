@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanRequest, curlFor } from './print-request.ts';
+import { cleanRequest, curlFor, requestProblem } from './print-request.ts';
 
 const base = { document: { path: 'Product label.template' }, printerId: 'p1', data: { values: { lot: 'L1' } } };
 
@@ -17,6 +17,25 @@ describe('cleanRequest', () => {
 		expect(request.data.copies).toBe(3);
 		expect(request.onBehalfOf).toEqual({ id: 'a1', name: 'Ana Novak' });
 		expect(request.settings).toEqual({ darkness: 25 });
+	});
+});
+
+describe('cleanRequest, emptied fields', () => {
+	it('leaves out a setting whose field was emptied (null)', () => {
+		const settings = { darkness: null, speedMmS: 51 } as unknown as { darkness?: number; speedMmS?: number };
+		expect(cleanRequest({ ...base, settings }).settings).toEqual({ speedMmS: 51 });
+	});
+});
+
+describe('requestProblem', () => {
+	it('lets a normal request through', () => {
+		expect(requestProblem({ ...base, data: { values: { lot: 'L1' }, copies: 2 } })).toBeNull();
+	});
+	it('stops too many copies, long values and odd shapes', () => {
+		expect(requestProblem({ ...base, data: { values: {}, copies: 100000 } })).toMatch(/copies/);
+		expect(requestProblem({ ...base, data: { values: { a: 'x'.repeat(501) } } })).toMatch(/characters/);
+		expect(requestProblem({ ...base, document: { id: 'a', path: 'b' } })).toMatch(/one document/);
+		expect(requestProblem('x')).toMatch(/Not a print request/);
 	});
 });
 
