@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import '#lib/styles/example.css';
 	import { EXAMPLES, GROUPS } from '#lib/examples.ts';
 	let { children } = $props();
 </script>

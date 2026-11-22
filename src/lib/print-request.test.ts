@@ -14,7 +14,7 @@ describe('cleanRequest', () => {
 			onBehalfOf: { id: 'a1', name: 'Ana Novak' },
 			settings: { darkness: 25, speedMmS: undefined }
 		});
-		expect(request.data.copies).toBe(3);
+		expect((request.data as { copies?: number }).copies).toBe(3);
 		expect(request.onBehalfOf).toEqual({ id: 'a1', name: 'Ana Novak' });
 		expect(request.settings).toEqual({ darkness: 25 });
 	});
@@ -36,6 +36,11 @@ describe('requestProblem', () => {
 		expect(requestProblem({ ...base, data: { values: { a: 'x'.repeat(501) } } })).toMatch(/characters/);
 		expect(requestProblem({ ...base, document: { id: 'a', path: 'b' } })).toMatch(/one document/);
 		expect(requestProblem('x')).toMatch(/Not a print request/);
+	});
+	it('counts the labels of every record against the demo’s limit', () => {
+		const records = Array.from({ length: 6 }, () => ({ lot: 'L', copies: 10 }));
+		expect(requestProblem({ ...base, data: { records } })).toMatch(/50 labels/);
+		expect(requestProblem({ ...base, data: { common: { lot: 'L' }, changes: [{ serial: '1' }, { serial: '2', copies: 3 }] } })).toBeNull();
 	});
 });
 
