@@ -78,6 +78,7 @@
 		<h2 id="reference">Reference</h2>
 		<ul class="plain">
 			<li><a href="https://api.sedumo.com/docs">Every route of the API</a>, with its request and answer.</li>
+			<li><a href="/skill">A skill for Claude</a>: teach Claude Code or the Claude apps how to build on Sedumo.</li>
 			<li><a href={guide('/guides/limits')}>Limits</a>: every size, count and period, and what depends on your plan.</li>
 			<li><a href="https://status.sedumo.com">Status</a>: whether Sedumo is up, and any planned maintenance.</li>
 		</ul>

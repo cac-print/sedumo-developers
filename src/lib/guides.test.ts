@@ -18,7 +18,8 @@ describe.skipIf(!hasGuides())('the guides as built', () => {
 		for (const guide of GUIDES) expect(rendered[`/guides/${guide.slug}`], guide.file).not.toBeNull();
 	});
 	it('the Start page’s paths land on headings that exist', () => {
-		for (const path of PATHS) expect(landsOnHeading(path.href), path.href).toBe(true);
+		for (const path of PATHS.filter((p) => p.href.startsWith('/guides/')))
+			expect(landsOnHeading(path.href), path.href).toBe(true);
 	});
 	it('links between guides land on headings that exist', () => {
 		const internal = /href="(\/guides\/[^"]+|#[^"]+)"/g;
