@@ -1,5 +1,9 @@
-import { apiUrl, hasToken, sedumo } from './env.ts';
+import { apiUrl, hasToken, sedumo, usingOwnAccount } from './env.ts';
 import { SedumoError } from './sedumo.ts';
+
+/** Your own token stopped working before its day here was over: say so, and where to go back to the demo. */
+export const OWN_TOKEN_REFUSED =
+	'Sedumo doesn’t take your token any more: it has expired or was revoked. In Use my account, stop or paste a new one.';
 
 const empty = { printers: [], labels: [], files: [], printerId: null, labelId: null, fileId: null, template: null };
 
@@ -26,6 +30,8 @@ export async function loadLabelExample(url: URL, defaults: Defaults = {}) {
 		return { ...(await fromSedumo(url, defaults)), noToken: false, problem: null, apiUrl: apiUrl() };
 	} catch (e) {
 		// Sedumo's own reason (over the plan's calls, a revoked token, maintenance), not a bare error page.
+		if (e instanceof SedumoError && e.status === 401 && usingOwnAccount())
+			return { ...empty, noToken: false, problem: OWN_TOKEN_REFUSED, apiUrl: apiUrl() };
 		if (e instanceof SedumoError)
 			return { ...empty, noToken: false, problem: `Sedumo answered ${e.status}: ${e.reason}`, apiUrl: apiUrl() };
 		throw e;

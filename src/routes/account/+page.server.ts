@@ -16,7 +16,8 @@ export const load = ({ url }) => ({ ownAccount: usingOwnAccount(), back: back(ur
 
 export const actions = {
 	// Checks the token with the calls the examples make first (GET /printers, GET /documents), then keeps it in a cookie
-	// the page's scripts can't read. Sent only to Sedumo, never stored or logged here.
+	// the page's scripts can't read (Lax: a link from another site opens the example on the same account its Print
+	// uses). Sent only to Sedumo, never stored or logged here.
 	use: async ({ request, cookies, url }) => {
 		const token = String((await request.formData()).get('token') ?? '').trim();
 		const problem = tokenProblem(token);
@@ -31,9 +32,11 @@ export const actions = {
 			if (e instanceof SedumoError && e.status === 403)
 				return fail(400, { problem: `Sedumo refused: ${e.reason}. Give the token List printers and Read documents.` });
 			if (e instanceof SedumoError) return fail(400, { problem: `Sedumo answered ${e.status}: ${e.reason}` });
-			return fail(503, { problem: 'Sedumo couldn’t be reached. Try again in a minute.' });
+			// fetch fails with a TypeError when Sedumo can't be reached; anything else is a fault here, shown as one.
+			if (e instanceof TypeError) return fail(503, { problem: 'Sedumo couldn’t be reached. Try again in a minute.' });
+			throw e;
 		}
-		cookies.set(ACCOUNT_COOKIE, token, { path: '/', httpOnly: true, sameSite: 'strict', maxAge: ACCOUNT_COOKIE_MAX_AGE });
+		cookies.set(ACCOUNT_COOKIE, token, { path: '/', httpOnly: true, sameSite: 'lax', maxAge: ACCOUNT_COOKIE_MAX_AGE });
 		redirect(303, back(url));
 	},
 	// Back to the demo: the cookie goes. The token itself still works until it expires; revoke it in Sedumo.

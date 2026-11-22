@@ -65,6 +65,9 @@
 			the way your own server would. It’s never stored or logged. The code is
 			<a href="https://github.com/sedumo/developers/blob/main/src/lib/server/env.ts">on GitHub</a>.
 		</li>
+		<li>
+			This site can’t see what else a token may do, or when it expires: make one only for this, as above.
+		</li>
 		<li>Anyone who uses this browser while it’s kept can print with it. On a shared computer, click <strong>Stop</strong> when done.</li>
 	</ul>
 
