@@ -98,20 +98,25 @@ function literal(value: unknown, l: Literals, depth = 0, pdf = false): string {
 	return l.numericKeys && entries.every(([k]) => /^\d+$/.test(k)) ? l.numericKeys(text) : text;
 }
 
+const PYTHON: Literals = {
+	string: quoted,
+	key: quoted,
+	object: ['{', '}'],
+	array: ['[', ']'],
+	pair: ': ',
+	empty: '{}',
+	true: 'True',
+	false: 'False',
+	null: 'None',
+	file: `base64.b64encode(open(${quoted(PDF_FILE)}, "rb").read()).decode()`,
+	indent: '    '
+};
+
+/** A value as a Python literal, indented `depth` levels (the Odoo module writes the request into its code). */
+export const pythonValue = (value: unknown, depth = 0) => literal(value, PYTHON, depth);
+
 function python({ request, url, headers, pdf }: Parts): string {
-	const l: Literals = {
-		string: quoted,
-		key: quoted,
-		object: ['{', '}'],
-		array: ['[', ']'],
-		pair: ': ',
-		empty: '{}',
-		true: 'True',
-		false: 'False',
-		null: 'None',
-		file: `base64.b64encode(open(${quoted(PDF_FILE)}, "rb").read()).decode()`,
-		indent: '    '
-	};
+	const l = PYTHON;
 	const header = Object.entries(headers).map(([k, v]) => `        ${quoted(k)}: ${quoted(v)},\n`).join('');
 	return `# Python 3.8 or newer, nothing to install. The token in SEDUMO_TOKEN.
 ${pdf ? 'import base64\n' : ''}import json
