@@ -1,6 +1,7 @@
 // The request an example sends, as a program in each language a developer may use: the same JSON, the same headers,
 // the token from the environment. A PDF sent with the request is read from a file (`document.pdf`) and sent as base64.
-// `scripts/run-code.ts` runs every one but ABAP and checks what each sends (in CI against a local server).
+// `scripts/run-code.ts` runs every one that runs outside an ERP and checks what each sends (in CI against a local
+// server); ABAP, X++ and AL need their ERP, so they are written the same way but not run.
 import { API_URL, curlFor, type PrintRequest } from './print-request.ts';
 
 export const LANGUAGES = [
@@ -11,16 +12,22 @@ export const LANGUAGES = [
 	{ id: 'node', name: 'Node.js' },
 	{ id: 'php', name: 'PHP' },
 	{ id: 'go', name: 'Go' },
-	{ id: 'abap', name: 'ABAP' }
+	// Each runs only inside its ERP (`erp`), so our checks can't run it.
+	{ id: 'abap', name: 'ABAP', erp: 'SAP' },
+	{ id: 'xpp', name: 'X++', erp: 'Dynamics 365 Finance and Operations' },
+	{ id: 'al', name: 'AL', erp: 'Dynamics 365 Business Central' }
 ] as const;
 
 export type Language = (typeof LANGUAGES)[number]['id'];
+
+/** The ERP a language runs in, when it runs only there. */
+export const erpOf = (language: Language) => (LANGUAGES.find((l) => l.id === language) as { erp?: string } | undefined)?.erp;
 
 export type CodeOptions = { path?: string; apiUrl?: string; headers?: Record<string, string> };
 
 /** The file a program reads when the request sends a PDF (or any file as base64). */
 export const PDF_FILE = 'document.pdf';
-// Where the file's base64 goes in a request written out as JSON text (C#, Java, Go, ABAP).
+// Where the file's base64 goes in a request written out as JSON text (C#, Java, Go, ABAP, X++, AL).
 const PDF_MARK = `<${PDF_FILE} as base64>`;
 
 /** The request as a program in `language`. */
@@ -29,7 +36,7 @@ export function codeFor(language: Language, request: PrintRequest, options: Code
 	const url = `${apiUrl}${path}`;
 	const pdf = 'content' in request.document && request.document.encoding === 'base64';
 	if (language === 'curl') return curlFor(request, path, apiUrl, headers);
-	const make = { csharp, java, python, node, php, go, abap }[language];
+	const make = { csharp, java, python, node, php, go, abap, xpp, al }[language];
 	return make({ request, url, headers, pdf });
 }
 
@@ -377,5 +384,100 @@ ${header}  client->request->set_cdata( body ).
   DATA(answer) = client->response->get_cdata( ).
   WRITE: / status, answer.
   client->close( ).
+`;
+}
+
+// X++: a verbatim string holds the JSON; a ' in it is written as JSON's ', so the string needs no escapes.
+function xpp(parts: Parts): string {
+	const { url, headers, pdf } = parts;
+	const json = jsonText(parts).replace(/'/g, '\\u0027');
+	const xppText = (s: string) => `'${s.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+	const header = Object.entries(headers)
+		.map(([k, v]) => `        message.Headers.Add(${xppText(k)}, ${xppText(v)});\n`)
+		.join('');
+	const file = pdf
+		? `
+        // The PDF's bytes: here from a file; in your solution, from your report or document.
+        System.Byte[] pdf = System.IO.File::ReadAllBytes(@'C:\Temp\${PDF_FILE}');
+        request = strReplace(request, ${xppText(PDF_MARK)}, System.Convert::ToBase64String(pdf));
+`
+		: '';
+	return `// Dynamics 365 Finance and Operations: a runnable class in your model. Keep the token in Key Vault
+// (System administration > Setup > Key Vault parameters), not in the code.
+internal final class SedumoPrint
+{
+    public static void main(Args _args)
+    {
+        str token = 'your Sedumo API token';
+        str request = @'${json}';
+${file}
+        // Not "client": a word X++ keeps for itself.
+        System.Net.Http.HttpClient httpClient = new System.Net.Http.HttpClient();
+        System.Net.Http.HttpRequestMessage message = new System.Net.Http.HttpRequestMessage(
+            new System.Net.Http.HttpMethod('POST'), ${xppText(url)});
+        message.Headers.Add('Authorization', 'Bearer ' + token);
+${header}        message.Content = new System.Net.Http.StringContent(request, System.Text.Encoding::get_UTF8(), 'application/json');
+        System.Net.Http.HttpResponseMessage response = httpClient.SendAsync(message).Result;
+        str answer = response.Content.ReadAsStringAsync().Result;
+        // The status as a number (201), not its .NET name (Created).
+        int status = response.StatusCode;
+        // 201: queued, with its jobId. Otherwise Sedumo says why in the answer.
+        info(strFmt('%1 %2', status, answer));
+    }
+}
+`;
+}
+
+// AL: text in single quotes, a ' doubled; long lines split.
+const alText = (s: string) => `'${s.replace(/'/g, "''")}'`;
+
+function al(parts: Parts): string {
+	const { url, headers, pdf } = parts;
+	const lines = jsonText(parts)
+		.split('\n')
+		.flatMap((line) => {
+			const characters = Array.from(line);
+			return Array.from({ length: Math.ceil(characters.length / 100) }, (_, i) => characters.slice(i * 100, i * 100 + 100).join(''));
+		})
+		.map((piece) => `            ${alText(piece)}`)
+		.join(' +\n');
+	const header = Object.entries(headers)
+		.map(([k, v]) => `        Client.DefaultRequestHeaders.Add(${alText(k)}, ${alText(v)});\n`)
+		.join('');
+	const file = pdf
+		? `        // The PDF from your report, e.g. Report.SaveAs(..., ReportFormat::Pdf, ...) into a Temp Blob.
+        TempBlob.CreateInStream(PdfStream);
+        Body := Body.Replace(${alText(PDF_MARK)}, Base64Convert.ToBase64(PdfStream));
+`
+		: '';
+	const pdfVars = pdf ? `        Base64Convert: Codeunit "Base64 Convert";\n        TempBlob: Codeunit "Temp Blob";\n        PdfStream: InStream;\n` : '';
+	return `// Dynamics 365 Business Central: a codeunit in your extension. The token kept in Isolated Storage
+// (IsolatedStorage.Set('SedumoToken', ..., DataScope::Company) once, from a setup page).
+codeunit 50100 "Sedumo Print"
+{
+    trigger OnRun()
+    var
+        Client: HttpClient;
+        Content: HttpContent;
+        ContentHeaders: HttpHeaders;
+        Response: HttpResponseMessage;
+        Token: Text;
+        Body: Text;
+        Answer: Text;
+${pdfVars}    begin
+        IsolatedStorage.Get('SedumoToken', DataScope::Company, Token);
+        Body :=
+${lines};
+${file}        Content.WriteFrom(Body);
+        Content.GetHeaders(ContentHeaders);
+        ContentHeaders.Remove('Content-Type');
+        ContentHeaders.Add('Content-Type', 'application/json');
+        Client.DefaultRequestHeaders.Add('Authorization', 'Bearer ' + Token);
+${header}        Client.Post(${alText(url)}, Content, Response);
+        Response.Content.ReadAs(Answer);
+        // 201: queued, with its jobId. Otherwise Sedumo says why in the answer.
+        Message('%1 %2', Response.HttpStatusCode, Answer);
+    end;
+}
 `;
 }

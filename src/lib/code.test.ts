@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeFor, LANGUAGES, PDF_FILE } from './code.ts';
+import { codeFor, erpOf, LANGUAGES, PDF_FILE } from './code.ts';
 import type { PrintRequest } from './print-request.ts';
 
 const label: PrintRequest = {
@@ -20,11 +20,18 @@ describe('codeFor', () => {
 	});
 
 	it('reads a PDF from its file instead of carrying the base64', () => {
-		for (const { id } of LANGUAGES.filter((l) => l.id !== 'curl' && l.id !== 'abap')) {
+		for (const { id } of LANGUAGES.filter((l) => l.id !== 'curl' && !erpOf(l.id))) {
 			const code = codeFor(id, pdf);
 			expect(code, id).toContain(PDF_FILE);
 			expect(code, id).not.toContain('JVBERi0x');
 		}
+	});
+
+	it('puts the PDF in from its bytes in an ERP, never the page’s base64', () => {
+		expect(codeFor('abap', pdf)).toContain('encode_x_base64( pdf )');
+		expect(codeFor('xpp', pdf)).toContain('System.Convert::ToBase64String(pdf)');
+		expect(codeFor('al', pdf)).toContain('Base64Convert.ToBase64(PdfStream)');
+		for (const id of ['abap', 'xpp', 'al'] as const) expect(codeFor(id, pdf), id).not.toContain('JVBERi0x');
 	});
 
 	it('keeps the JSON exactly in C# and Go', () => {
@@ -64,6 +71,15 @@ describe('codeFor', () => {
 		const body = [...code.matchAll(/^ {4}`(.*)`(?: &&|\.)$/gm)].map((m) => m[1].replace(/``/g, '`')).join('');
 		expect(JSON.parse(body)).toEqual(emoji);
 		expect(code).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
+	});
+
+	it('keeps the JSON exactly in X++ and AL', () => {
+		const xpp = /str request = @'([\s\S]*?)';/.exec(codeFor('xpp', label))?.[1];
+		expect(xpp).not.toContain("'");
+		expect(JSON.parse(xpp ?? '')).toEqual(label);
+		const al = codeFor('al', label);
+		const body = [...al.matchAll(/^ {12}'(.*)'(?: \+|;)$/gm)].map((m) => m[1].replace(/''/g, "'")).join('');
+		expect(JSON.parse(body)).toEqual(label);
 	});
 
 	it('keeps ABAP’s lines short and its backquotes doubled', () => {

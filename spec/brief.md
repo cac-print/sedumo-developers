@@ -35,8 +35,9 @@ Sedumo supports, plus printers that show what goes wrong: a Zebra whose head is 
 always out of paper (a print waits, as it would in a plant, and prints at night when the demo resets), and a printer
 that is switched off. Don't enter real data: everyone uses the same demo printers.
 
-**Code in eight languages:** curl, C#, Java, Python, Node, PHP, Go and ABAP, made from the same request the page
-sends. All but ABAP are compiled and run against Sedumo in the checks.
+**Code in ten languages:** curl, C#, Java, Python, Node, PHP, Go, and for the ERPs ABAP (SAP), X++ (Dynamics 365
+Finance and Operations) and AL (Business Central), made from the same request the page sends. All but the ERPs' are
+run in the checks.
 
 **Your own account:** paste a token that lives a day and may only print and read; it is kept in the browser tab, sent
 with each request to this site's server, used for that request and never stored or logged. Later: sign in with Sedumo

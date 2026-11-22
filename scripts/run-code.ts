@@ -1,7 +1,8 @@
-// Runs the code the examples show, in every language but ABAP. First against a local server that checks each program
-// sends exactly the page's request: the same JSON, the token, the headers. Then, with SEDUMO_TOKEN, against Sedumo,
-// where each print must be queued (201): the token needs print and printers:read, on an account with the sample labels
-// (`npm run setup`) and the printers "ZPL 203 dpi" and "PDF office printer"; SEDUMO_API_URL for another Sedumo.
+// Runs the code the examples show, in every language that runs outside an ERP (not ABAP, X++ or AL). First against
+// a local server that checks each program sends exactly the page's request: the same JSON, the token, the headers.
+// Then, with SEDUMO_TOKEN, against Sedumo, where each print must be queued (201): the token needs print and
+// printers:read, on an account with the sample labels (`npm run setup`) and the printers "ZPL 203 dpi" and
+// "PDF office printer"; SEDUMO_API_URL for another Sedumo.
 //
 //   node scripts/run-code.ts [language…]            with each language's own tools installed
 //   node scripts/run-code.ts --docker [language…]   with each language's official Docker image instead

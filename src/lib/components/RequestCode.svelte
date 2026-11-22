@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Code from './Code.svelte';
-	import { codeFor, LANGUAGES, PDF_FILE, type Language } from '#lib/code.ts';
+	import { codeFor, erpOf, LANGUAGES, PDF_FILE, type Language } from '#lib/code.ts';
 	import type { PrintRequest } from '#lib/print-request.ts';
 
 	// The request in the language the reader picks; the choice is kept in this browser for every example.
@@ -28,6 +28,7 @@
 
 	const name = $derived(LANGUAGES.find((l) => l.id === language)?.name ?? language);
 	const pdf = $derived('content' in request.document && request.document.encoding === 'base64');
+	const erp = $derived(erpOf(language));
 </script>
 
 <div class="languages" role="tablist" aria-label="Language">
@@ -39,12 +40,12 @@
 	<Code code={codeFor(language, request, { apiUrl, headers })} label="the request in {name}" />
 	{#if language !== 'curl'}
 		<p class="small">
-			{#if language === 'abap'}
-				Sent like the others, but not run in our checks: there is no SAP system in them.
+			{#if erp}
+				For {erp}. Sent like the others, but not run in our checks: it runs only inside {erp}.
 			{:else}
 				Only the language’s own library; our checks run it and compare what it sends with the page’s request.
 			{/if}
-			{#if pdf && language !== 'abap'}It reads the PDF from <code>{PDF_FILE}</code> next to it.{/if}
+			{#if pdf && !erp}It reads the PDF from <code>{PDF_FILE}</code> next to it.{/if}
 		</p>
 	{/if}
 </div>
