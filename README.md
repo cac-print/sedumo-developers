@@ -17,6 +17,17 @@ npm run dev
 
 `npm run check` (types and Svelte), `npm test` (Vitest), `npm run build` (a Node server in `build/`: `node build`).
 
+## Sample labels
+
+The examples print two sample labels and three files. To load them into your own Sedumo account, make an API token
+there (Settings → Access → API tokens) with `documents:read` and `documents:write`, then:
+
+```sh
+SEDUMO_TOKEN=sedumo_mt_… npm run setup
+```
+
+It saves the labels and lists the files in `setup/files/` to upload once in Sedumo.
+
 ## The guides
 
 The guides are Sedumo's manual, which lives in Sedumo's own (private) repository. `npm run guides` copies them into
