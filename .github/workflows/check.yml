@@ -32,6 +32,7 @@ jobs:
   # (scripts/run-code.ts, against a local server; no token needed).
   code:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

@@ -45,6 +45,7 @@ if (token) {
 	if (!response.ok) throw new Error(`/printers: ${response.status} ${await response.text()}`);
 	const answer = await response.json();
 	printers = Array.isArray(answer) ? answer : (answer.printers ?? answer.data);
+	if (!Array.isArray(printers)) throw new Error(`/printers: no list of printers in ${JSON.stringify(answer).slice(0, 200)}`);
 }
 function printer(name: string): string {
 	if (!token) return `printer ${name}`;
@@ -55,7 +56,8 @@ function printer(name: string): string {
 
 const run = Date.now().toString(36);
 const pdfFile = 'setup/files/packing-list.pdf';
-// Every kind of request a page makes, with text that needs escaping in some language: quotes, $, \, a backquote, ä.
+// Every kind of request a page makes, with text that needs escaping in some language: quotes, $, \, a backquote, ä,
+// a byte-order mark (pasted from a spreadsheet) and a line separator.
 type Case = { name: string; request: PrintRequest; headers?: Record<string, string>; pdf?: string };
 const CASES: Case[] = [
 	{
@@ -63,7 +65,7 @@ const CASES: Case[] = [
 		request: {
 			document: { path: 'Product label.template' },
 			printerId: printer('ZPL 203 dpi'),
-			data: { values: { product: 'Butter 250 g', weight: '0.250', best_before: '2026-12-31', lot: `L-$1 \\ O'Neil "x" \`y\` ä`, ean: '3830001234567' } },
+			data: { values: { product: 'Butter 250 g', weight: '0.250', best_before: '2026-12-31', lot: `\ufeffL-$1 \\ O'Neil "x" \`y\` ä\u2028`, ean: '3830001234567' } },
 			onBehalfOf: { id: 'code-check', name: 'Code check' }
 		},
 		headers: { 'Idempotency-Key': `code-check-${run}` }
@@ -135,7 +137,7 @@ async function runProgram(language: Language, code: string, c: Case, environment
 			? // As root (the .NET SDK's first run needs it), giving what a build leaves back to this user.
 				['docker', 'run', '--rm', '--add-host', 'host.docker.internal:host-gateway', '-e', 'SEDUMO_TOKEN', '-e', 'DOTNET_CLI_TELEMETRY_OPTOUT=1', '-e', 'DOTNET_NOLOGO=1', '-v', `${dir}:/code`, '-w', '/code', how.image, 'sh', '-c', `${how.command.join(' ')}; s=$?; chown -R ${process.getuid?.()}:${process.getgid?.()} /code; exit $s`]
 			: how.command;
-		const { stdout } = await promisify(execFile)(command[0], command.slice(1), { cwd: dir, env, encoding: 'utf8', maxBuffer: 10_000_000 });
+		const { stdout } = await promisify(execFile)(command[0], command.slice(1), { cwd: dir, env, encoding: 'utf8', maxBuffer: 10_000_000, timeout: 300_000 });
 		// The program prints the status, then the answer.
 		return { ok: /^201\b/m.test(stdout), output: stdout.trim() };
 	} catch (error) {
@@ -146,6 +148,8 @@ async function runProgram(language: Language, code: string, c: Case, environment
 	}
 }
 
+const unknown = chosen.filter((name) => !(name in RUN));
+if (unknown.length) throw new Error(`Not a language this runs: ${unknown.join(', ')} (it runs ${Object.keys(RUN).join(', ')})`);
 const languages = LANGUAGES.map((l) => l.id).filter((id) => id in RUN && (!chosen.length || chosen.includes(id)));
 const failed: string[] = [];
 for (const language of languages) {

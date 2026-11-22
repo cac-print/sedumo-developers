@@ -1,6 +1,6 @@
 // The request an example sends, as a program in each language a developer may use: the same JSON, the same headers,
 // the token from the environment. A PDF sent with the request is read from a file (`document.pdf`) and sent as base64.
-// CI runs every one but ABAP against Sedumo (`scripts/run-code.mjs`).
+// `scripts/run-code.ts` runs every one but ABAP and checks what each sends (in CI against a local server).
 import { API_URL, curlFor, type PrintRequest } from './print-request.ts';
 
 export const LANGUAGES = [
@@ -37,10 +37,13 @@ type Parts = { request: PrintRequest; url: string; headers: Record<string, strin
 
 // The request with the file's base64 left out: each language puts it in from `document.pdf`.
 const withMark = (request: PrintRequest): PrintRequest => ({ ...request, document: { ...request.document, content: PDF_MARK } as PrintRequest['document'] });
-const jsonText = ({ request, pdf }: Parts) => JSON.stringify(pdf ? withMark(request) : request, null, 2);
+// Characters JSON leaves as they are but some compilers take as a line break or refuse (Go a byte-order mark), as
+// \u escapes: the same value once the JSON is read.
+const unseen = (json: string) => json.replace(/[\u0085\u2028\u2029\ufeff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+const jsonText = ({ request, pdf }: Parts) => unseen(JSON.stringify(pdf ? withMark(request) : request, null, 2));
 
-// A string in C#, Java, Go and JavaScript: JSON's escapes are theirs too.
-const quoted = (s: string) => JSON.stringify(s);
+// A string in C#, Java, Go, Python and JavaScript: JSON's escapes are theirs too.
+const quoted = (s: string) => unseen(JSON.stringify(s));
 
 // A value written in a language's own literals; `file` stands for the PDF's base64.
 type Literals = {
@@ -71,7 +74,8 @@ function literal(value: unknown, l: Literals, depth = 0, pdf = false): string {
 		if (!value.length) return `${l.array[0]}${l.array[1]}`;
 		return `${l.array[0]}\n${value.map((v) => `${inner}${literal(v, l, depth + 1, pdf)},`).join('\n')}\n${close}${l.array[1]}`;
 	}
-	const entries = Object.entries(value as object);
+	// Left out when not set, as JSON.stringify does.
+	const entries = Object.entries(value as object).filter(([, v]) => v !== undefined);
 	if (!entries.length) return l.empty;
 	const text = `${l.object[0]}\n${entries.map(([k, v]) => `${inner}${l.key(k)}${l.pair}${literal(v, l, depth + 1, pdf)},`).join('\n')}\n${close}${l.object[1]}`;
 	return l.numericKeys && entries.every(([k]) => /^\d+$/.test(k)) ? l.numericKeys(text) : text;
@@ -122,7 +126,7 @@ except urllib.error.HTTPError as error:
 
 const identifier = /^[A-Za-z_$][\w$]*$/;
 // JavaScript in single quotes: JSON's escapes, a " as it is, a ' escaped.
-const jsString = (s: string) => `'${JSON.stringify(s).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'")}'`;
+const jsString = (s: string) => `'${quoted(s).slice(1, -1).replace(/\\"/g, '"').replace(/'/g, "\\'")}'`;
 
 function node({ request, url, headers, pdf }: Parts): string {
 	const l: Literals = {
@@ -318,7 +322,11 @@ ${header}	response, err := (&http.Client{Timeout: 30 * time.Second}).Do(request)
 const abapText = (s: string) => `\`${s.replace(/`/g, '``')}\``;
 function abapLines(json: string): string {
 	// The JSON's line breaks are only for reading it: the lines are joined without them.
-	const pieces = json.split('\n').flatMap((line) => line.match(/.{1,100}/g) ?? []);
+	const pieces = json.split('\n').flatMap((line) => {
+		// By whole characters, so none is cut in two.
+		const characters = Array.from(line);
+		return Array.from({ length: Math.ceil(characters.length / 100) }, (_, i) => characters.slice(i * 100, i * 100 + 100).join(''));
+	});
 	return pieces.map((p) => `    ${abapText(p)}`).join(' &&\n');
 }
 

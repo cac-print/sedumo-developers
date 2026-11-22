@@ -44,6 +44,28 @@ describe('codeFor', () => {
 		expect(codeFor('php', { ...label, data: { values: { '0': 'a' } } })).toContain('(object) [');
 	});
 
+	it('writes characters compilers take as a line break, or refuse, as escapes', () => {
+		const odd: PrintRequest = { ...label, data: { values: { lot: '\ufeffL1\u2028x' } } };
+		// A shell's and PHP's quotes take them as they are.
+		for (const id of ['csharp', 'java', 'python', 'node', 'go', 'abap'] as const) expect(codeFor(id, odd), id).not.toMatch(/[\u2028\ufeff]/);
+		const go = /const requestJSON = `([\s\S]*?)`\n\nfunc/.exec(codeFor('go', odd))?.[1];
+		expect(JSON.parse(go ?? '')).toEqual(odd);
+	});
+
+	it('leaves out what isn’t set, as JSON does', () => {
+		const unset = { ...label, settings: { darkness: undefined } } as unknown as PrintRequest;
+		expect(codeFor('python', unset)).not.toContain('darkness');
+		expect(codeFor('php', unset)).not.toContain('darkness');
+	});
+
+	it('cuts ABAP’s long lines between whole characters, losing none', () => {
+		const emoji: PrintRequest = { ...label, data: { values: { note: 'a'.repeat(85) + '😀'.repeat(30) + '\u2028' } } };
+		const code = codeFor('abap', emoji);
+		const body = [...code.matchAll(/^ {4}`(.*)`(?: &&|\.)$/gm)].map((m) => m[1].replace(/``/g, '`')).join('');
+		expect(JSON.parse(body)).toEqual(emoji);
+		expect(code).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
+	});
+
 	it('keeps ABAP’s lines short and its backquotes doubled', () => {
 		const long: PrintRequest = { ...label, data: { values: { note: '`'.repeat(400) } } };
 		const code = codeFor('abap', long);
