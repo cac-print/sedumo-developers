@@ -78,6 +78,11 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 			(await call<DocumentSummary[]>('GET', `/documents?q=${encodeURIComponent('.template')}`))
 				.filter((d) => d.name.toLowerCase().endsWith('.template'))
 				.sort((a, b) => a.path.localeCompare(b.path)),
+		/** The files that print as they are (ZPL, PDF): every document that isn't a label. */
+		listFiles: async () =>
+			(await call<DocumentSummary[]>('GET', '/documents'))
+				.filter((d) => /\.(zpl|prn|txt|pdf)$/i.test(d.name))
+				.sort((a, b) => a.path.localeCompare(b.path)),
 		readTemplate: async (id: string) =>
 			(await call<{ template: Template }>('GET', `/designer/templates/${encodeURIComponent(id)}`)).template,
 		/** The one print action: a document, a printer and data. Refusals come back as an answer, not an error. */
