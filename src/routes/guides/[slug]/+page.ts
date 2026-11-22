@@ -2,7 +2,10 @@ import { error } from '@sveltejs/kit';
 import { GUIDES, hasGuides, loadGuide } from '#lib/guides.ts';
 import type { EntryGenerator, PageLoad } from './$types';
 
-// A page for each guide the build has; none when it was built without the manual.
+// A page for each guide the build has. Built without the manual, there are none to build ahead, and the server
+// answers 404.
+export const prerender = hasGuides();
+
 export const entries: EntryGenerator = () => (hasGuides() ? GUIDES.map((g) => ({ slug: g.slug })) : []);
 
 export const load: PageLoad = ({ params }) => {

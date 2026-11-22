@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { guideHref } from '#lib/guides.ts';
 	import { PATHS } from '#lib/paths.ts';
 
 	const token = `curl https://api.sedumo.com/printers -H "Authorization: Bearer $SEDUMO_TOKEN"`;
@@ -55,7 +56,7 @@
 				<p>Until it is <code>completed</code>, or <code>failed</code> with the reason.</p>
 			</li>
 		</ol>
-		<p><a href="/guides/api">The API guide</a> explains each step, with every option.</p>
+		<p><a href={guideHref('/guides/api')}>The API guide</a> explains each step, with every option.</p>
 	</section>
 
 	<section aria-labelledby="paths">
@@ -63,7 +64,7 @@
 		<ul class="cards">
 			{#each PATHS as path (path.href)}
 				<li>
-					<a href={path.href}>
+					<a href={guideHref(path.href)}>
 						<strong>{path.title}</strong>
 						<span>{path.text}</span>
 					</a>
@@ -76,7 +77,7 @@
 		<h2 id="reference">Reference</h2>
 		<ul class="plain">
 			<li><a href="https://api.sedumo.com/docs">Every route of the API</a>, with its request and answer.</li>
-			<li><a href="/guides/limits">Limits</a>: every size, count and period, and what depends on your plan.</li>
+			<li><a href={guideHref('/guides/limits')}>Limits</a>: every size, count and period, and what depends on your plan.</li>
 			<li><a href="https://status.sedumo.com">Status</a>: whether Sedumo is up, and any planned maintenance.</li>
 		</ul>
 	</section>
