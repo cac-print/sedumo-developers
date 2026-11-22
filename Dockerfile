@@ -9,7 +9,8 @@ RUN npm run build && npm prune --omit=dev
 
 FROM node:24-slim
 WORKDIR /app
-ENV NODE_ENV=production PORT=3000
+# A PDF sent with a print is up to about 1.5 MB of base64; Node's default request limit is 512 KB.
+ENV NODE_ENV=production PORT=3000 BODY_SIZE_LIMIT=4M
 COPY --from=build /app/build ./build
 COPY --from=build /app/node_modules ./node_modules
 COPY package.json ./

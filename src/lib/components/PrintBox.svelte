@@ -9,12 +9,15 @@
 		request,
 		size,
 		answer = $bindable(null),
-		lastStatus = $bindable(null)
+		lastStatus = $bindable(null),
+		preview = true
 	}: {
 		request: PrintRequest | null;
 		size: { widthMm: number; heightMm: number } | null;
 		answer?: Answer | null;
 		lastStatus?: unknown;
+		// Sedumo previews labels designed in it; a file prints as it is.
+		preview?: boolean;
 	} = $props();
 
 	// Past the demo's limits: said here, and neither previewed nor sent.
@@ -46,8 +49,8 @@
 	const jobId = $derived(answer?.status === 201 ? answer.body.jobId : undefined);
 </script>
 
-{#if problem}<p class="refused">{problem}</p>{/if}
-<Preview request={sendable} {size} />
+{#if problem}<p class="refused" role="alert">{problem}</p>{/if}
+{#if preview}<Preview request={sendable} {size} />{/if}
 
 <button class="print" type="button" disabled={!sendable || sending} onclick={print}>{sending ? 'Sending…' : 'Print'}</button>
 
