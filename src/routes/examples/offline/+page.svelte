@@ -11,11 +11,16 @@
   "data": { "values": { "product": "Milk 1 l", "best_before": "2026-12-10", "lot": "L2026-10" } }
 }'`;
 
-	const node = `// The cloud first. The worker only when the cloud can't be reached at all: after a timeout the cloud may
-// already have queued the print, and a worker doesn't know the cloud's keys, so sending it there would print twice.
+	const node = `// The cloud first. The worker only when no request could have reached the cloud: once one went out and its
+// answer was lost, the cloud may have queued the print, and a worker doesn't know the cloud's keys.
+import { Agent } from 'undici';
+
 const CLOUD = 'https://api.sedumo.com';
 const WORKER = process.env.SEDUMO_WORKER_URL ?? 'http://127.0.0.1:7647';
-const UNREACHABLE = ['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH'];
+// Errors where no connection was made, so nothing reached the cloud.
+const NOT_CONNECTED = ['ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN', 'ENETUNREACH', 'EHOSTUNREACH', 'UND_ERR_CONNECT_TIMEOUT'];
+// A short wait for the connection, a longer one for the answer.
+const dispatcher = new Agent({ connect: { timeout: 3_000 } });
 
 const send = (base, request, key) =>
   fetch(\`\${base}/print\`, {
@@ -26,23 +31,23 @@ const send = (base, request, key) =>
       'Idempotency-Key': key
     },
     body: JSON.stringify(request),
-    signal: AbortSignal.timeout(10_000)
+    signal: AbortSignal.timeout(15_000),
+    dispatcher
   });
 
 async function print(request, key) {
+  let maybeQueued = false;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       // Any answer, even a refusal, is the cloud's decision.
       return { via: 'cloud', response: await send(CLOUD, request, key) };
     } catch (error) {
-      if (UNREACHABLE.includes(error.cause?.code)) {
-        // The request never reached Sedumo: the worker prints it.
-        return { via: 'worker', response: await send(WORKER, request, key) };
-      }
-      // A timeout or a dropped connection: the same key makes trying the cloud again safe.
+      if (!NOT_CONNECTED.includes(error.cause?.code)) maybeQueued = true; // sent, no answer
     }
   }
-  throw new Error('No answer from Sedumo: the print may be queued; check it before sending it anywhere else');
+  if (maybeQueued) throw new Error('No answer from Sedumo: the print may be queued; check it before printing it elsewhere');
+  // No attempt reached the cloud: the worker prints it.
+  return { via: 'worker', response: await send(WORKER, request, key) };
 }`;
 </script>
 
@@ -63,16 +68,18 @@ async function print(request, key) {
 		<h2>Set it up</h2>
 		<ol class="setup">
 			<li>
-				Make the app’s token valid <strong>on the workers</strong> too: Settings → Access → API tokens, “Where it works”:
-				both.
+				Make the app’s token valid on the workers too: Settings → Access → API tokens, <strong>Valid on</strong>:
+				<strong>Cloud and workers</strong>.
 			</li>
 			<li>
 				Make sure the worker has the labels before the internet goes: it keeps a label it printed before, and labels
 				kept there in advance by tag (your admin sets that up). A label it doesn’t have is refused with <code>409</code>.
 			</li>
 			<li>
-				The worker answers on its own PC at <code>http://127.0.0.1:7647</code>. To reach it from other PCs, plant IT
-				lets it listen on the network (see the <a href="/guides/plant-it#the-local-print-api">plant IT guide</a>).
+				Best, run the app on the worker’s own PC: it answers there at <code>http://127.0.0.1:7647</code>. From another
+				PC, use the worker’s HTTPS address (turn on <strong>Print from other PCs</strong>, see
+				<a href="/examples/browser">a web page on the plant network</a>), never its plain HTTP port on the network: the
+				token goes with every request, and on the network anyone could read it.
 			</li>
 		</ol>
 
@@ -93,13 +100,16 @@ async function print(request, key) {
 		<ul class="small">
 			<li>
 				Each worker keeps its own <code>Idempotency-Key</code>s, apart from the cloud’s: a print sent to both prints
-				twice. So only a request that never reached the cloud (the connection refused, the name not found) goes to the
-				worker. After a timeout, try the cloud again with the same key. An answer from the cloud, even a refusal, is
-				final.
+				twice. So the worker gets it only when no attempt could have reached the cloud (no connection could be made).
+				Once a request went out and its answer was lost, only the cloud is tried again, with the same key, and after
+				that a person checks the print. An answer from the cloud, even a refusal, is final.
 			</li>
 			<li>What the worker printed offline appears in Sedumo’s history once it’s online again.</li>
 			<li>There’s no preview on the worker, and no reading a label’s fields: read those while online and keep them.</li>
-			<li>A worker’s local API has no limit on calls. Ten wrong tokens from one address lock it for 15 minutes.</li>
+			<li>
+				A worker’s local API has no limit on calls. Ten wrong tokens within 15 minutes lock that address out for 15
+				minutes (<code>429</code>); a valid token keeps working.
+			</li>
 		</ul>
 		<p><a href="/guides/api#8-print-when-the-internet-is-down">API guide: 8. Print when the internet is down</a></p>
 	</section>

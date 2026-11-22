@@ -5,19 +5,28 @@
 const worker = 'https://k3f9x2.lan.sedumo.com:7648';
 const headers = { Authorization: \`Bearer \${token}\` };
 
-// Before printing: is the worker there, and which printers does it have?
-const printers = await fetch(\`\${worker}/printers\`, { headers }).then((r) => r.json());
+async function call(path, options = {}) {
+  const response = await fetch(\`\${worker}\${path}\`, { ...options, headers: { ...headers, ...options.headers } });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.message ?? \`The worker answered \${response.status}\`);
+  return body;
+}
 
-const answer = await fetch(\`\${worker}/print\`, {
+// Before printing: is the worker there, and which of its printers is ready?
+const printers = await call('/printers');
+const printer = printers.find((p) => p.language && p.status !== 'offline');
+if (!printer) throw new Error('No printer of this worker is ready');
+
+const answer = await call('/print', {
   method: 'POST',
-  headers: { ...headers, 'Content-Type': 'application/json', 'Idempotency-Key': key },
+  headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key },
   body: JSON.stringify({
     document: { path: 'Product label.template' },
-    printerId: printers[0].id,
+    printerId: printer.id,
     data: { values: { product: 'Milk 1 l', best_before: '2026-12-10', lot: 'L2026-10' } }
   })
-}).then((r) => r.json());
-// Then GET \${worker}/print-jobs/\${answer.jobId} until it's completed or failed.`;
+});
+// Then GET /print-jobs/\${answer.jobId} until it's completed or failed.`;
 </script>
 
 <svelte:head>
@@ -42,7 +51,11 @@ const answer = await fetch(\`\${worker}/print\`, {
 				<strong>Browser apps</strong>.
 			</li>
 			<li>
-				Give the page a token valid <strong>on workers only</strong>. It’s the one kind of token that may be in a browser:
+				Plant IT allows TCP port 7648 from the plant network in the worker PC’s firewall (see the
+				<a href="/guides/plant-it#printing-from-other-pcs-over-https">plant IT guide</a>).
+			</li>
+			<li>
+				Give the page a token valid on <strong>workers only</strong>. It’s the one kind of token that may be in a browser:
 				it can’t reach Sedumo’s cloud.
 			</li>
 		</ol>

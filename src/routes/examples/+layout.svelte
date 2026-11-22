@@ -16,7 +16,8 @@
 							<a
 								href="/examples/{example.slug}"
 								aria-current={page.url.pathname === `/examples/${example.slug}` ? 'page' : undefined}
-								>{example.title}{#if example.live === false}<small> code</small>{/if}</a
+								>{example.title}{#if example.live === false}
+									<small><span class="hidden">, </span>code only</small>{/if}</a
 							>
 						{:else}
 							<span title="Coming soon">{example.title}</span>
@@ -76,6 +77,13 @@
 		border: 1px solid var(--line);
 		border-radius: 4px;
 		padding: 0 0.25rem;
+	}
+	.hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
 	}
 	nav span {
 		color: var(--muted);
