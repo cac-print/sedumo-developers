@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import Code from './Code.svelte';
 	import RequestCode from './RequestCode.svelte';
-	import type { PrintRequest } from '#lib/print-request.ts';
+	import { curlFor, type PrintRequest } from '#lib/print-request.ts';
 
 	// The right column of an example: when to use it, the request in the reader's language, Sedumo's answer, and
 	// following the print.
@@ -14,7 +14,9 @@
 		guides,
 		intro,
 		notes,
-		headers = {}
+		headers = {},
+		path = '/print',
+		codeTabs = true
 	}: {
 		request: PrintRequest | null;
 		answer: { status: number; body: { jobId?: string } & Record<string, unknown>; replayed?: boolean } | null;
@@ -24,15 +26,23 @@
 		intro: Snippet;
 		notes?: Snippet;
 		headers?: Record<string, string>;
+		// The route with its query, e.g. `/print?successStatus=200`.
+		path?: string;
+		// The request in every language; false when another system sends it (Dynamics 365): curl only, as it's sent.
+		codeTabs?: boolean;
 	} = $props();
-	const jobId = $derived(answer?.status === 201 ? answer.body.jobId : undefined);
+	// Queued: 201, or 200 when asked for.
+	const jobId = $derived(answer && answer.status >= 200 && answer.status < 300 ? answer.body.jobId : undefined);
 </script>
 
 <h2>How it works</h2>
 {@render intro()}
 
 <h3>The request</h3>
-{#if request}<RequestCode {request} {apiUrl} {headers} />{/if}
+{#if request}
+	{#if codeTabs}<RequestCode {request} {apiUrl} {headers} {path} />
+	{:else}<Code code={curlFor(request, path, apiUrl, headers)} label="the request" />{/if}
+{/if}
 {#if notes}<div class="small">{@render notes()}</div>{/if}
 
 <h3>What comes back</h3>

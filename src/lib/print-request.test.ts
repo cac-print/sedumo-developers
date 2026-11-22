@@ -27,6 +27,23 @@ describe('cleanRequest, emptied fields', () => {
 	});
 });
 
+describe('requestProblem, ZPL as base64', () => {
+	const zpl = (text: string) => ({ document: { content: btoa(text), kind: 'stream', encoding: 'base64' }, printerId: 'p1', data: { values: {} } });
+	it('counts a base64 ZPL file’s ^PQ, as Dynamics 365 sends it', () => {
+		expect(requestProblem(zpl('^XA^FDx^FS^XZ'))).toBeNull();
+		expect(requestProblem(zpl('^XA^FDx^FS^PQ500^XZ'))).toMatch(/\^PQ/);
+	});
+	it('counts ZPL in a file that starts like a PDF, and a PDF without ^XA as one label', () => {
+		expect(requestProblem(zpl('%PDF-1.7\n^XA^FDx^FS^PQ500^XZ'))).toMatch(/\^PQ/);
+		expect(requestProblem(zpl('%PDF-1.7\n%%EOF'))).toBeNull();
+	});
+	it('refuses content that isn’t plain base64, which Sedumo might read more leniently', () => {
+		const sent = zpl('^XA^FDx^FS^PQ500^XZ');
+		for (const content of [`${sent.document.content}*`, ' eA==', 'eA=', 'e A=='])
+			expect(requestProblem({ ...sent, document: { ...sent.document, content } }), content).toMatch(/plain base64/);
+	});
+});
+
 describe('requestProblem', () => {
 	it('lets a normal request through', () => {
 		expect(requestProblem({ ...base, data: { values: { lot: 'L1' }, copies: 2 } })).toBeNull();

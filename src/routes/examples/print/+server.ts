@@ -4,7 +4,7 @@ import { cleanRequest, isIdempotencyKey, requestProblem, type PrintRequest } fro
 
 // Sends the request the page shows to Sedumo (POST /print) and returns Sedumo's answer as it came, refusals too.
 // Anyone can call this, so it takes only what the page sends: one document, a few copies, short values.
-export const POST = async ({ request }) => {
+export const POST = async ({ request, url }) => {
 	const body = await request.json().catch(() => null);
 	const problem = requestProblem(body);
 	if (problem) return json({ message: problem }, { status: 400 });
@@ -12,5 +12,8 @@ export const POST = async ({ request }) => {
 	const key = request.headers.get('idempotency-key') ?? undefined;
 	if (key !== undefined && !isIdempotencyKey(key))
 		return json({ message: 'An Idempotency-Key is 1 to 200 visible characters, no spaces' }, { status: 400 });
-	return json(await sedumo().print(cleanRequest(body as PrintRequest), key));
+	// As Dynamics 365 asks: 200 instead of 201 for a queued print. Only 200 is passed on.
+	const successStatus = url.searchParams.get('successStatus');
+	if (successStatus !== null && successStatus !== '200') return json({ message: 'successStatus may only be 200' }, { status: 400 });
+	return json(await sedumo().print(cleanRequest(body as PrintRequest), key, successStatus ? 200 : undefined));
 };
