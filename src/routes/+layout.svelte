@@ -29,7 +29,7 @@
 		</nav>
 		<nav class="out" aria-label="Elsewhere">
 			<a href="https://status.sedumo.com">Status</a>
-			<a href="https://github.com/cac-print/sedumo-developers">GitHub</a>
+			<a href="https://github.com/sedumo/developers">GitHub</a>
 			<a class="signin" href="https://app.sedumo.com">Sign in</a>
 		</nav>
 	</div>
@@ -44,7 +44,7 @@
 		<span>Sedumo for developers</span>
 		<a href="https://sedumo.com">sedumo.com</a>
 		<a href="https://status.sedumo.com">Status</a>
-		<a href="https://github.com/cac-print/sedumo-developers">This site’s code (MIT)</a>
+		<a href="https://github.com/sedumo/developers">This site’s code (MIT)</a>
 	</div>
 </footer>
 
