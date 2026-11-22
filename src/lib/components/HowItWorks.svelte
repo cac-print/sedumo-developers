@@ -3,7 +3,7 @@
 	import Code from './Code.svelte';
 	import RequestCode from './RequestCode.svelte';
 	import { curlFor, type PrintRequest } from '#lib/print-request.ts';
-	import { codeFor, type Language } from '#lib/code.ts';
+	import { codeFor, onlyIn, type Language } from '#lib/code.ts';
 
 	// The right column of an example: when to use it, the request in the reader's language, Sedumo's answer, and
 	// following the print.
@@ -44,7 +44,9 @@
 
 <h3>The request</h3>
 {#if request}
-	{#if only}<Code code={codeFor(only, request, { apiUrl, headers, path })} label="the code" />
+	{#if only}
+		<Code code={codeFor(only, request, { apiUrl, headers, path, alReport: only === 'al' })} label="the code" />
+		{#if onlyIn(only)}<p class="small">For {onlyIn(only)}. Not run in our checks: it runs only inside {onlyIn(only)}.</p>{/if}
 	{:else if codeTabs}<RequestCode {request} {apiUrl} {headers} {path} />
 	{:else}<Code code={curlFor(request, path, apiUrl, headers)} label="the request" />{/if}
 {/if}

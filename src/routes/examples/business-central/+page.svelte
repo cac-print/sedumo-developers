@@ -81,7 +81,7 @@
 
 		<fieldset class="source">
 			<legend>The PDF</legend>
-			<label><input type="radio" bind:group={source} value="made" /> a shipment note made here, as your report makes it</label>
+			<label><input type="radio" bind:group={source} value="made" /> a delivery note made here, standing in for your report’s PDF</label>
 			<label><input type="radio" bind:group={source} value="upload" /> a PDF of your own, saved from Business Central</label>
 		</fieldset>
 
@@ -119,7 +119,10 @@
 				</p>
 				<h3>In Business Central</h3>
 				<ol>
-					<li>The codeunit below in your extension, with your report’s number in <code>Report.SaveAs</code>.</li>
+					<li>
+						The codeunit below in your extension, with your report’s number in <code>Report.SaveAs</code> and the
+						document it prints (a <code>RecordRef</code>, or the report prints every one).
+					</li>
 					<li>
 						An admin turns on <em>Allow HttpClient Requests</em> for the extension (Extension Management → Configure):
 						until then Business Central blocks its calls out.
