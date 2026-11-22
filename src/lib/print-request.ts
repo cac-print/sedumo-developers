@@ -50,8 +50,8 @@ export function requestProblem(body: unknown): string | null {
 	if ('values' in data && !isObject(data.values)) return 'No values';
 	const many = data.records ?? data.changes;
 	if (!('values' in data) && !Array.isArray(many)) return 'Records are a list';
-	const records: unknown[] =
-		'values' in data ? [{ ...(data.values as object), ...(data.copies === undefined ? {} : { copies: data.copies }) }] : (many as unknown[]);
+	// One record's copies are its own key, never a value named "copies".
+	const records: unknown[] = 'values' in data ? [{ ...(data.values as object), copies: data.copies }] : (many as unknown[]);
 	if (records.length === 0) return 'No values';
 	if (records.length > LIMITS.records) return `At most ${LIMITS.records} records on the demo printers`;
 	if (data.common !== undefined) {

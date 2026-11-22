@@ -47,6 +47,9 @@ describe('requestProblem', () => {
 		const sneaky = { ...base, data: { common: { lot: 'L' }, changes: [{ serial: '1' }], extra: 'x' } } as unknown as PrintRequest;
 		expect(cleanRequest(sneaky).data).toEqual({ common: { lot: 'L' }, changes: [{ serial: '1' }] });
 	});
+	it('reads a value named copies as a value, not as the copies', () => {
+		expect(requestProblem({ ...base, data: { values: { copies: 'abc', lot: 'L' } } })).toBeNull();
+	});
 	it('counts the labels of every record against the demo’s limit', () => {
 		const records = Array.from({ length: 6 }, () => ({ lot: 'L', copies: 10 }));
 		expect(requestProblem({ ...base, data: { records } })).toMatch(/50 labels/);
