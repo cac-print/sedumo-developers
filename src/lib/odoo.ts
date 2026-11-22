@@ -23,7 +23,8 @@ export function odooModule(request: PrintRequest, apiUrl: string): OdooFile[] {
     "version": "1.0.0",
     "depends": ["stock"],
     "data": ["views/stock_picking_views.xml"],
-    "license": "LGPL-3",
+    # MIT, as every example on this site: "Other OSI approved licence" is how an Odoo manifest says so.
+    "license": "Other OSI approved licence",
 }
 `
 		},
