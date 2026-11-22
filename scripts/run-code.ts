@@ -18,10 +18,21 @@ import type { PrintRequest } from '../src/lib/print-request.ts';
 
 const args = process.argv.slice(2);
 const docker = args.includes('--docker');
+// --only=local or --only=sedumo: one of the two passes (CI runs them as two steps, so Sedumo being down never stops
+// the local check).
+const only = args.find((a) => a.startsWith('--only='))?.slice('--only='.length);
+if (only !== undefined && only !== 'local' && only !== 'sedumo') throw new Error('--only=local or --only=sedumo');
 const chosen = args.filter((a) => !a.startsWith('--'));
 // An empty value is no value: CI passes a secret that a pull request from a copy of this repo doesn't get.
-const apiUrl = (process.env.SEDUMO_API_URL || 'https://api.sedumo.com').replace(/\/+$/, '');
 const token = process.env.SEDUMO_TOKEN || undefined;
+// In CI a token goes only to the Sedumo it was made for: never to the default.
+if (token && process.env.CI && !process.env.SEDUMO_API_URL) throw new Error('SEDUMO_TOKEN without SEDUMO_API_URL in CI');
+const apiUrl = (process.env.SEDUMO_API_URL || 'https://api.sedumo.com').replace(/\/+$/, '');
+const passes = [
+	...(only !== 'sedumo' ? (['local'] as const) : []),
+	...(only !== 'local' && token ? (['Sedumo'] as const) : [])
+];
+if (only === 'sedumo' && !token) throw new Error('--only=sedumo needs SEDUMO_TOKEN');
 
 // How each program runs: its file, the command, and the Docker image for --docker.
 type How = { file: string; command: string[]; image: string; project?: { file: string; text: string } };
@@ -56,20 +67,15 @@ const RUN: Partial<Record<Language, How>> = {
 	powershell: { file: 'print.ps1', command: ['pwsh', '-NoProfile', '-File', 'print.ps1'], image: 'mcr.microsoft.com/dotnet/sdk:8.0' }
 };
 
-// The printers to print to: Sedumo's own ids, or made up for the local check.
-let printers: { id: string; name: string }[] = [];
-if (token) {
-	const response = await fetch(`${apiUrl}/printers`, { headers: { Authorization: `Bearer ${token}` } });
+// Each case names its printer; the local check takes the name as the id, Sedumo's pass its real id (read only then).
+const printer = (name: string) => `printer ${name}`;
+async function sedumoPrinters(): Promise<Map<string, string>> {
+	const response = await fetch(`${apiUrl}/printers`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(30_000) });
 	if (!response.ok) throw new Error(`/printers: ${response.status} ${await response.text()}`);
 	const answer = await response.json();
-	printers = Array.isArray(answer) ? answer : (answer.printers ?? answer.data);
-	if (!Array.isArray(printers)) throw new Error(`/printers: no list of printers in ${JSON.stringify(answer).slice(0, 200)}`);
-}
-function printer(name: string): string {
-	if (!token) return `printer ${name}`;
-	const id = printers.find((p) => p.name === name)?.id;
-	if (!id) throw new Error(`No printer "${name}"`);
-	return id;
+	const list = Array.isArray(answer) ? answer : (answer.printers ?? answer.data);
+	if (!Array.isArray(list)) throw new Error(`/printers: no list of printers in ${JSON.stringify(answer).slice(0, 200)}`);
+	return new Map(list.map((p: { id: string; name: string }) => [`printer ${p.name}`, p.id]));
 }
 
 const run = Date.now().toString(36);
@@ -170,19 +176,23 @@ const unknown = chosen.filter((name) => !(name in RUN));
 if (unknown.length) throw new Error(`Not a language this runs: ${unknown.join(', ')} (it runs ${Object.keys(RUN).join(', ')})`);
 const languages = LANGUAGES.map((l) => l.id).filter((id) => id in RUN && (!chosen.length || chosen.includes(id)));
 const failed: string[] = [];
-for (const language of languages) {
-	for (const [i, c] of CASES.entries()) {
-		// Each language its own key: the same key with another program's body may be refused.
-		const headers = Object.fromEntries(Object.entries(c.headers ?? {}).map(([k, v]) => [k, `${v}-${language}`]));
-		const body = c.pdf ? { ...c.request, document: { ...c.request.document, content: readFileSync(c.pdf).toString('base64') } } : c.request;
-		const targets = [{ where: 'local', url: localUrl, token: LOCAL_TOKEN }, ...(token ? [{ where: 'Sedumo', url: apiUrl, token }] : [])];
-		for (const target of targets) {
+for (const pass of passes) {
+	const ids = pass === 'Sedumo' ? await sedumoPrinters() : null;
+	for (const language of languages) {
+		for (const [i, c] of CASES.entries()) {
+			const named = c.request.printerId ?? '';
+			const printerId = ids ? ids.get(named) : named;
+			if (!printerId) throw new Error(`No printer "${named.slice('printer '.length)}" on Sedumo`);
+			const request = { ...c.request, printerId };
+			// Each language its own key: the same key with another program's body may be refused.
+			const headers = Object.fromEntries(Object.entries(c.headers ?? {}).map(([k, v]) => [k, `${v}-${language}`]));
+			const body = c.pdf ? { ...request, document: { ...request.document, content: readFileSync(c.pdf).toString('base64') } } : request;
+			const target = pass === 'local' ? { url: localUrl, token: LOCAL_TOKEN } : { url: apiUrl, token: token as string };
 			expected = { body, headers };
-			const { ok, output } = await runProgram(language, codeFor(language, c.request, { apiUrl: target.url, headers }), c, target.token);
-			const what = `${language.padEnd(10)} ${target.where.padEnd(6)} ${i + 1}. ${c.name}`;
+			const { ok, output } = await runProgram(language, codeFor(language, request, { apiUrl: target.url, headers }), c, target.token);
+			const what = `${language.padEnd(10)} ${pass.padEnd(6)} ${i + 1}. ${c.name}`;
 			console.log(ok ? `ok   ${what}` : `FAIL ${what}: ${output.replace(/\s+/g, ' ').slice(0, 500)}`);
 			if (!ok) failed.push(what);
-			if (!ok) break;
 		}
 	}
 }

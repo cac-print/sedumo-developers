@@ -29,11 +29,15 @@ jobs:
       - run: npm run build
       - run: npm run build:cloudflare
   # The code the examples show, in every language that runs on its own: each program must send exactly the page's
-  # request (scripts/run-code.ts, against a local server), then print on Sedumo's test copy, when the repo has a token
-  # for it (SEDUMO_STAGING_TOKEN; a pull request from a copy of this repo gets none and runs the local check only).
+  # request (scripts/run-code.ts, against a local server), then print on Sedumo when the repo has a token for it (a
+  # pull request from a copy of this repo gets none and runs the local check only).
   code:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # A newer push to the same branch cancels the older run, so its prints aren't sent twice.
+    concurrency:
+      group: code-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -51,7 +55,17 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - run: python3 --version && php --version | head -1
-      - run: node scripts/run-code.ts
+      - name: Each program sends the page's request (local)
+        run: node scripts/run-code.ts --only=local
+        env:
+          DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+          DOTNET_NOLOGO: '1'
+      # Only with both the token and its address: a token never goes to another Sedumo.
+      - name: Each program prints on Sedumo
+        if: ${{ vars.SEDUMO_STAGING_API_URL != '' }}
+        run: |
+          if [ -z "$SEDUMO_TOKEN" ]; then echo 'No token for Sedumo here (a pull request from a copy of this repo): skipped'; exit 0; fi
+          node scripts/run-code.ts --only=sedumo
         env:
           DOTNET_CLI_TELEMETRY_OPTOUT: '1'
           DOTNET_NOLOGO: '1'
