@@ -9,8 +9,8 @@ Sedumo prints labels from other software. An app sends one request: **a document
 queues it, and a **Sedumo worker** (a small program on a PC next to the printers) fills in the label and prints it.
 The same requests also work against the worker itself, on the plant network, when the internet is down.
 
-The full guide, with every option, is at https://developers.sedumo.com/guides/api; live examples of every way to
-print, each with its request, are at https://developers.sedumo.com/examples. `references/api.md` (next to this file)
+The full guide, with every option, is at https://developers.sedumo.com/guides/api; examples of every way to print,
+each with its request (most of them printing live on demo printers), are at https://developers.sedumo.com/examples. `references/api.md` (next to this file)
 has the request and answer shapes, the error codes and the limits: read it when you write the calls.
 
 ## What to get right
@@ -98,5 +98,5 @@ when typing pauses, not on every key.
   environment), so the rest of the app never sees the token and the base URL can point at a worker.
 - Map Sedumo's answers to what the app's user sees: printed, waiting (and why), failed (Sedumo's `error`), refused
   (Sedumo's `message`). Keep `jobId` and `X-Request-Id` with the order in your own data.
-- Test against a real Sedumo account; https://developers.sedumo.com/examples prints on demo printers and shows each
-  request, including the refusals.
+- Test against a real Sedumo account; https://developers.sedumo.com/examples shows each request and its answer,
+  refusals included, most of them printing on demo printers.
