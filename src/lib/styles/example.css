@@ -1,0 +1,74 @@
+/* The two columns of an example page (the cases list is the layout's): try it, and how it works. */
+.columns {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 2.5rem;
+	align-items: start;
+}
+.try {
+	display: grid;
+	gap: 0.9rem;
+}
+.try h1 {
+	margin-bottom: 0;
+}
+.try .lead {
+	margin: 0;
+}
+.try label {
+	display: grid;
+	gap: 0.25rem;
+	font-weight: 600;
+	font-size: 0.95rem;
+}
+.try label small {
+	font-weight: 400;
+	color: var(--muted);
+}
+.try input,
+.try select,
+.try textarea {
+	width: 100%;
+	min-width: 0;
+	font: inherit;
+	font-weight: 400;
+	padding: 0.45rem 0.6rem;
+	border: 1px solid var(--line);
+	border-radius: 6px;
+	background: var(--paper);
+	color: var(--ink);
+}
+.try textarea {
+	font: 0.85rem var(--mono);
+	line-height: 1.5;
+}
+.try .row {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+	gap: 0.9rem;
+}
+.try details summary {
+	cursor: pointer;
+	font-weight: 600;
+	font-size: 0.95rem;
+}
+.try details .row {
+	margin-top: 0.6rem;
+}
+.try .problem {
+	margin: 0;
+	padding: 0.6rem 0.8rem;
+	border-radius: 8px;
+	background: var(--sunken);
+	border-left: 4px solid var(--sedumo-coral);
+}
+.try .count {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.9rem;
+}
+@media (max-width: 75rem) {
+	.columns {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
