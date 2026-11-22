@@ -8,5 +8,6 @@
 	"workers_dev": false,
 	"preview_urls": false,
 	"routes": [{ "pattern": "developers.sedumo.com", "custom_domain": true }],
-	"observability": { "enabled": true }
+	// No invocation logs: they keep request headers, and a developer's own token comes in a cookie (/account).
+	"observability": { "enabled": true, "logs": { "invocation_logs": false } }
 }

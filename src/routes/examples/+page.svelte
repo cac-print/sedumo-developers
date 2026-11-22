@@ -6,8 +6,8 @@
 
 <h1>Examples</h1>
 <p class="lead">
-	Every way to print, a page each, with the request it sends. Most print for real on Sedumo’s demo printers; the two
-	that run on a plant’s own network show their code.
+	Every way to print, a page each, with the request it sends. Most print for real on Sedumo’s demo printers, or on
+	your own with <a href="/account">Use my account</a>; the two that run on a plant’s own network show their code.
 </p>
 {#each GROUPS as group (group)}
 	<h2>{group}</h2>

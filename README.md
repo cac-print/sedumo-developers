@@ -28,6 +28,13 @@ SEDUMO_TOKEN=sedumo_mt_… npm run setup
 
 It saves the labels and lists the files in `setup/files/` to upload once in Sedumo.
 
+## Use my account
+
+`/account` lets a developer paste an API token of their own Sedumo account; the examples then list and print on their
+printers and labels. The token goes into an `HttpOnly`, `SameSite=Strict` cookie for a day at most (or until **Stop**);
+the server reads it per request in `src/lib/server/env.ts` and sends it only to Sedumo. It's never stored or logged:
+`wrangler.jsonc` turns off Cloudflare's invocation logs, which keep request headers. The demo's limits apply to it too.
+
 ## The guides
 
 The guides are Sedumo's manual, which lives in Sedumo's own (private) repository. `npm run guides` copies them into

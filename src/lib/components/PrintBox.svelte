@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import Preview from './Preview.svelte';
 	import PrintStatus from './PrintStatus.svelte';
 	import { isIdempotencyKey, requestProblem, type PrintRequest } from '#lib/print-request.ts';
@@ -77,7 +78,14 @@
 {#if jobId}
 	<PrintStatus {jobId} onstatus={(s) => (lastStatus = s)} />
 {/if}
-<p class="note">Demo printers: everyone prints to the same ones, so don’t enter real data.</p>
+{#if page.data.ownAccount}
+	<p class="note">Your account: each print is real, on your printers. <a href="/account?from={encodeURIComponent(page.url.pathname)}">Change</a></p>
+{:else}
+	<p class="note">
+		Demo printers: everyone prints to the same ones, so don’t enter real data. Or
+		<a href="/account?from={encodeURIComponent(page.url.pathname)}">use your account</a>.
+	</p>
+{/if}
 
 <style>
 	.print {

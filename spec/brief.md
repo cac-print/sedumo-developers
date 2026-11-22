@@ -39,8 +39,10 @@ that is switched off. Don't enter real data: everyone uses the same demo printer
 runs inside an application ABAP (SAP), X++ (Dynamics 365 Finance and Operations), AL (Business Central) and Excel VBA,
 made from the same request the page sends. All that run on their own are run in the checks.
 
-**Your own account:** paste a token that lives a day and may only print and read; it is kept in the browser tab, sent
-with each request to this site's server, used for that request and never stored or logged. Later: sign in with Sedumo
+**Your own account** (`/account`, "Use my account"): paste a token that lives a day and may only print and read; it is
+kept in a cookie the page's scripts can't read (a day at most, or until Stop), sent with each request to this site's
+server, used for that request and never stored or logged. A cookie rather than the tab's own storage, so the pages the
+server builds (printers, labels) use it too. Later: sign in with Sedumo
 instead of pasting a token.
 
 ## Rules
