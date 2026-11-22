@@ -2,46 +2,44 @@
 export type Path = { title: string; text: string; href: string };
 
 export const PATHS: Path[] = [
-  {
-    title: "Your ERP or warehouse system prints",
-    text: "One request per print from your server: a label, a printer and its values, many labels in one print, and a retry that never prints twice.",
-    href: "/guides/api#4-print",
-  },
-  {
-    title: "The line keeps printing without the internet",
-    text: "Send the same requests to the Sedumo worker on the plant network when the cloud can’t be reached.",
-    href: "/guides/api#8-print-when-the-internet-is-down",
-  },
-  {
-    title: "A web page on the plant network prints",
-    text: "A browser app prints through a worker on the network over HTTPS, offline too.",
-    href: "/guides/api#from-a-browser-app-on-another-pc",
-  },
-  {
-    title: "Your own printer files and PDFs",
-    text: "Print ZPL your system makes, or a PDF, on label and office printers.",
-    href: "/guides/api#7-print-a-file-you-made-yourself",
-  },
-  {
-    title: "Workers at a site",
-    text: "Install and link workers, and what plant IT needs: the network, printing over the LAN, updates and security.",
-    href: "/guides/plant-it",
-  },
-  {
-    title: "An AI coding assistant writes it with you",
-    text: "Add the Sedumo skill to Claude Code, Codex, Cursor, Gemini CLI or Copilot, and it writes your integration the way Sedumo works.",
-    href: "/skill",
-  },
-  {
-    title: "An AI assistant designs your labels and forms",
-    text: "Connect Claude or another assistant to your Sedumo account: it makes and changes labels and print forms as you, with only what your role allows.",
-    href: "/guides/ai-assistants",
-  },
+	{
+		title: 'Your ERP or warehouse system prints',
+		text: 'One request per print from your server: a label, a printer and its values, many labels in one print, and a retry that never prints twice.',
+		href: '/guides/api#4-print'
+	},
+	{
+		title: 'The line keeps printing without the internet',
+		text: 'Send the same requests to the Sedumo worker on the plant network when the cloud can’t be reached.',
+		href: '/guides/api#8-print-when-the-internet-is-down'
+	},
+	{
+		title: 'A web page on the plant network prints',
+		text: 'A browser app prints through a worker on the network over HTTPS, offline too.',
+		href: '/guides/api#from-a-browser-app-on-another-pc'
+	},
+	{
+		title: 'Your own printer files and PDFs',
+		text: 'Print ZPL your system makes, or a PDF, on label and office printers.',
+		href: '/guides/api#7-print-a-file-you-made-yourself'
+	},
+	{
+		title: 'Workers at a site',
+		text: 'Install and link workers, and what plant IT needs: the network, printing over the LAN, updates and security.',
+		href: '/guides/plant-it'
+	},
+	{
+		title: 'An AI coding assistant writes it with you',
+		text: 'Add the Sedumo skill to Claude Code, Codex, Cursor, Gemini CLI, Copilot or Antigravity, and it writes your integration the way Sedumo works.',
+		href: '/skill'
+	},
+	{
+		title: 'An AI assistant designs your labels and forms',
+		text: 'Connect Claude or another assistant to your Sedumo account: it makes and changes labels and print forms as you, with only what your role allows.',
+		href: '/guides/ai-assistants'
+	}
 ];
 
 /** A link to a guide: its page here, or on developers.sedumo.com when this copy was built without the guides. */
 export function guideHref(built: boolean, href: string): string {
-  return built || !href.startsWith("/guides")
-    ? href
-    : `https://developers.sedumo.com${href}`;
+	return built || !href.startsWith('/guides') ? href : `https://developers.sedumo.com${href}`;
 }

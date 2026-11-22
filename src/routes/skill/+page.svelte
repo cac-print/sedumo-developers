@@ -46,29 +46,44 @@ Expand-Archive $env:TEMP\\sedumo.zip -DestinationPath ${folder} -Force`;
 		The skill is a folder, <code>sedumo</code>, in the open Agent Skills format. Put it where your assistant looks for
 		skills: for all your projects, or in one project's folder, committed so your team has it too.
 	</p>
-	<table>
-		<thead>
-			<tr><th>Assistant</th><th>For all your projects</th><th>For one project</th></tr>
-		</thead>
-		<tbody>
-			{#each WHERE as [name, home, project] (name)}
-				<tr><td>{name}</td><td><code>{home}</code></td><td><code>{project}</code></td></tr>
-			{/each}
-		</tbody>
-	</table>
+	<div class="table">
+		<table>
+			<thead>
+				<tr><th>Assistant</th><th>For all your projects</th><th>For one project</th></tr>
+			</thead>
+			<tbody>
+				{#each WHERE as [name, home, project] (name)}
+					<tr><td>{name}</td><td><code>{home}</code></td><td><code>{project}</code></td></tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
 
 	<h3>Claude Code</h3>
 	<p>For all your projects (macOS, Linux, WSL):</p>
 	<Code code={unix('~/.claude/skills')} label="the command for Claude Code" />
 	<p>On Windows, in PowerShell:</p>
 	<Code code={windows('$HOME\\.claude\\skills')} label="the PowerShell command for Claude Code" />
+	<p>Or only for one project, from its folder (commit <code>.claude/skills/sedumo</code> to share it with your team):</p>
+	<Code code={unix('.claude/skills')} label="the command for one project in Claude Code" />
 
 	<h3>Codex, Cursor, Gemini CLI and GitHub Copilot</h3>
 	<p>All four read <code>~/.agents/skills</code>. For all your projects (macOS, Linux, WSL):</p>
 	<Code code={unix('~/.agents/skills')} label="the command for Codex, Cursor, Gemini CLI and Copilot" />
 	<p>On Windows, in PowerShell:</p>
 	<Code code={windows('$HOME\\.agents\\skills')} label="the PowerShell command for Codex, Cursor, Gemini CLI and Copilot" />
-	<p>For one project, run the same from its folder with the project's folder from the table, for example <code>.agents/skills</code>.</p>
+	<p>
+		Or only for one project, from its folder (for GitHub Copilot, <code>.github/skills</code> in place of
+		<code>.agents/skills</code>):
+	</p>
+	<Code code={unix('.agents/skills')} label="the command for one project" />
+
+	<h3>Google Antigravity</h3>
+	<p>For all your projects (macOS, Linux, WSL):</p>
+	<Code code={unix('~/.gemini/config/skills')} label="the command for Antigravity" />
+	<p>On Windows, in PowerShell:</p>
+	<Code code={windows('$HOME\\.gemini\\config\\skills')} label="the PowerShell command for Antigravity" />
+	<p>For one project, use <code>.agents/skills</code> in its folder, as above.</p>
 
 	<h3>Claude apps (claude.ai, desktop)</h3>
 	<ol>
@@ -108,11 +123,17 @@ Expand-Archive $env:TEMP\\sedumo.zip -DestinationPath ${folder} -Force`;
 	.asks li {
 		margin: 0.4rem 0;
 	}
-	table {
-		display: block;
+	.table {
 		overflow-x: auto;
-		border-collapse: collapse;
 		margin: 1rem 0;
+	}
+	table {
+		border-collapse: collapse;
+	}
+	.note {
+		border-left: 3px solid var(--link);
+		background: var(--sunken);
+		padding: 0.5rem 0.9rem;
 	}
 	th,
 	td {
