@@ -27,6 +27,14 @@ export const EXAMPLES: Example[] = [
 		ready: true
 	},
 	{
+		slug: 'odoo',
+		title: 'Odoo',
+		group: 'Integrations',
+		summary: 'A Print label button on delivery orders, from a small module.',
+		guide: '/guides/api#4-print',
+		ready: true
+	},
+	{
 		slug: 'power-automate',
 		title: 'Power Automate',
 		group: 'Integrations',
