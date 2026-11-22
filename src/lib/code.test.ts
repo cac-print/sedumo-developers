@@ -31,6 +31,7 @@ describe('codeFor', () => {
 		expect(codeFor('abap', pdf)).toContain('encode_x_base64( pdf )');
 		expect(codeFor('xpp', pdf)).toContain('System.Convert::ToBase64String(pdf)');
 		expect(codeFor('al', pdf)).toContain('Base64Convert.ToBase64(PdfStream)');
+		expect(codeFor('al', pdf)).toContain("Report.SaveAs(208, '', ReportFormat::Pdf, PdfOut);");
 		expect(codeFor('vba', pdf)).toContain('FileBase64(ThisWorkbook.Path & "\\document.pdf")');
 		for (const id of ['abap', 'xpp', 'al', 'vba'] as const) expect(codeFor(id, pdf), id).not.toContain('JVBERi0x');
 	});

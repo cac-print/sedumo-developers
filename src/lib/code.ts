@@ -439,13 +439,17 @@ function al(parts: Parts): string {
 		.map(([k, v]) => `        Client.DefaultRequestHeaders.Add(${alText(k)}, ${alText(v)});\n`)
 		.join('');
 	const file = pdf
-		? `        // The PDF from your report, e.g. Report.SaveAs(..., ReportFormat::Pdf, ...) into a Temp Blob.
+		? `        // The PDF from your report: its number (208 is Sedumo's example, Sales - Shipment), with a RecordRef
+        // for one document.
+        TempBlob.CreateOutStream(PdfOut);
+        Report.SaveAs(208, '', ReportFormat::Pdf, PdfOut);
         TempBlob.CreateInStream(PdfStream);
         Body := Body.Replace(${alText(PDF_MARK)}, Base64Convert.ToBase64(PdfStream));
 `
 		: '';
-	const pdfVars = pdf ? `        Base64Convert: Codeunit "Base64 Convert";\n        TempBlob: Codeunit "Temp Blob";\n        PdfStream: InStream;\n` : '';
-	return `// Dynamics 365 Business Central: a codeunit in your extension. The token kept in Isolated Storage
+	const pdfVars = pdf ? `        Base64Convert: Codeunit "Base64 Convert";\n        TempBlob: Codeunit "Temp Blob";\n        PdfOut: OutStream;\n        PdfStream: InStream;\n` : '';
+	return `// Dynamics 365 Business Central: a codeunit in your extension. Its calls out are off until an admin turns on
+// Allow HttpClient Requests for it (Extension Management > Configure). The token kept in Isolated Storage
 // (IsolatedStorage.Set('SedumoToken', ..., DataScope::Company) once, from a setup page).
 codeunit 50100 "Sedumo Print"
 {
