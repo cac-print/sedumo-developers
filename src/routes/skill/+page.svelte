@@ -1,8 +1,12 @@
 <script lang="ts">
 	import Code from '#lib/components/Code.svelte';
+	import { guideHref } from '#lib/paths.ts';
+	let { data } = $props();
 
 	const claudeCode = `curl -fsSL https://developers.sedumo.com/skills/sedumo.zip -o /tmp/sedumo.zip \\
   && unzip -o /tmp/sedumo.zip -d ~/.claude/skills/`;
+	const windows = `Invoke-WebRequest https://developers.sedumo.com/skills/sedumo.zip -OutFile $env:TEMP\\sedumo.zip
+Expand-Archive $env:TEMP\\sedumo.zip -DestinationPath $HOME\\.claude\\skills -Force`;
 	const project = `curl -fsSL https://developers.sedumo.com/skills/sedumo.zip -o /tmp/sedumo.zip \\
   && unzip -o /tmp/sedumo.zip -d .claude/skills/`;
 </script>
@@ -16,16 +20,18 @@
 	<h1>A skill for Claude</h1>
 	<p class="lead">
 		Add the Sedumo skill to Claude, and it builds your integration the way Sedumo works: the token on your server, one
-		request per print, a key that makes retries safe, following a print until it’s on paper, and printing through the
-		worker when the internet is down.
+		request per print, a key that makes retries safe, following a print until the printer has it (or why it waits or
+		failed), and printing through the worker when the internet is down.
 	</p>
 
 	<h2>Add it</h2>
 	<h3>Claude Code</h3>
-	<p>For all your projects:</p>
-	<Code code={claudeCode} label="the command" />
+	<p>For all your projects (macOS, Linux, WSL):</p>
+	<Code code={claudeCode} label="the command for all projects" />
+	<p>On Windows, in PowerShell:</p>
+	<Code code={windows} label="the PowerShell command" />
 	<p>Or only for one project, from its folder (commit <code>.claude/skills/sedumo</code> to share it with your team):</p>
-	<Code code={project} label="the command" />
+	<Code code={project} label="the command for this project" />
 
 	<h3>Claude apps (claude.ai, desktop)</h3>
 	<ol>
@@ -48,7 +54,7 @@
 	</ul>
 	<p>
 		Claude reads the skill when your work is about Sedumo. It points Claude at the
-		<a href="/guides/api">API guide</a> and the <a href="/examples">examples</a> for the details.
+		<a href={guideHref(data.guidesBuilt, '/guides/api')}>API guide</a> and the <a href="/examples">examples</a> for the details.
 	</p>
 </main>
 

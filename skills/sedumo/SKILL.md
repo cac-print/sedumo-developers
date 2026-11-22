@@ -42,9 +42,12 @@ These are the things an integration most often gets wrong. Each one costs a repr
    "maintenance"`, `Retry-After` and `until`: keep the work and send it again later, with its Idempotency-Key.
 8. **Keep the `X-Request-Id`.** Every answer carries one (or yours, if you send `X-Request-Id`). Log it beside the
    call, without the `Authorization` header; it's how a failed call is found in Sedumo's logs.
-9. **Offline is the same API on another address.** For a line that must keep printing without the internet, send the
-   same request to the worker (`http://127.0.0.1:7647`, or its address on the plant network) when the cloud can't be
-   reached. The token must be made valid on workers too, and the worker prints only labels it already has.
+9. **Offline is the same API on another address**, but not the same keys. For a line that must keep printing without
+   the internet, send the request to the worker (`http://127.0.0.1:7647`, or its address on the plant network) only
+   when the cloud **can't be reached at all** (the connection is refused, the name doesn't resolve). After a timeout
+   the cloud may have queued the print: retry the cloud with the same key instead. The cloud and each worker keep their
+   own Idempotency-Keys, so a print sent to both prints twice. The token must be made valid on workers too, and the
+   worker prints only labels it already has.
 
 ## The print request
 

@@ -18,8 +18,10 @@ describe.skipIf(!hasGuides())('the guides as built', () => {
 		for (const guide of GUIDES) expect(rendered[`/guides/${guide.slug}`], guide.file).not.toBeNull();
 	});
 	it('the Start page’s paths land on headings that exist', () => {
-		for (const path of PATHS.filter((p) => p.href.startsWith('/guides/')))
-			expect(landsOnHeading(path.href), path.href).toBe(true);
+		// A guide link lands on a heading; any other is one of the site's own pages.
+		const pages = ['/skill', '/examples'];
+		for (const path of PATHS)
+			expect(path.href.startsWith('/guides/') ? landsOnHeading(path.href) : pages.includes(path.href), path.href).toBe(true);
 	});
 	it('links between guides land on headings that exist', () => {
 		const internal = /href="(\/guides\/[^"]+|#[^"]+)"/g;

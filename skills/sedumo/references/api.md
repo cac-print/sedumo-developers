@@ -44,7 +44,8 @@ Things a token may not see are simply not there: lists leave them out, and askin
 `labels` is how many labels the data makes. With an `Idempotency-Key` (1 to 200 visible characters, remembered 24
 hours, your token's own), the same request again gets this answer again with `Idempotent-Replayed: true`. The same key
 with a different request: `422`, `code: "idempotency_key_reused"` (use a new key). The same key while the first is
-still running: you usually just wait; otherwise `409`. A refused print (`400`) used no key.
+still running: you usually just wait; otherwise `409`, `code: "idempotency_in_progress"`, `Retry-After: 1`: send it
+again a second later. A refused print (`400`) used no key.
 
 ## Following a print
 
@@ -102,12 +103,15 @@ sets the worker to listen there, `WORKER_LOCAL_API_BIND`; ask for its address).
   keep them.
 - The token must be made valid **on the workers** (or both). Offline the worker prints only labels whose file it
   already has (printed there before, or kept there in advance by tag); otherwise `409`.
-- `Idempotency-Key` works the same; each worker keeps its own keys, apart from the cloud's.
+- `Idempotency-Key` works the same, but each worker keeps its own keys, apart from the cloud's: a key sent to the cloud
+  is new to a worker.
 - What it printed offline appears in Sedumo's history once it's online.
 - No plan limit on calls. 10 wrong tokens in 15 minutes from one address lock that address for 15 minutes (`429`); a
   valid token keeps working.
-- A common pattern: send to the cloud; on a network error (not a `4xx`), send the same request, with the same
-  Idempotency-Key, to the worker.
+- A common pattern: send to the cloud; go to the worker only when the cloud can't be reached at all (connection
+  refused, no DNS). After a **timeout**, the cloud may have queued the print, and the worker doesn't know the cloud's
+  keys: retry the cloud with the same key (safe) until it answers or is clearly unreachable. An answer from the cloud,
+  even a `4xx`, is final.
 
 ## A web page on the plant network
 
@@ -129,7 +133,7 @@ match: `{ "message": "Validation failed", "errors": [ { "path": "data.values.lot
 | `401` | No token, a wrong, expired or revoked one, or one not valid here (cloud or workers) |
 | `403` | The token lacks the permission; or (saving) the plan's storage is full |
 | `404` | No such printer, label or print, or the token may not see it |
-| `409` | Worker offline: it doesn't have the label's file. Cloud: the same Idempotency-Key still running |
+| `409` | Cloud: `idempotency_in_progress`, the same key still running; send again after `Retry-After` (1 s). Worker offline: it doesn't have the label's file, and sending again won't help |
 | `422` | `idempotency_key_reused`; or (preview) a label Sedumo can't draw as a picture yet |
 | `429` | Past the plan's calls a minute or a day: wait `Retry-After` seconds (`retryAfterSeconds` in the body) |
 | `503` | Planned maintenance: `{ "code": "maintenance", "until": …, "status": "https://status.sedumo.com" }` with `Retry-After` |

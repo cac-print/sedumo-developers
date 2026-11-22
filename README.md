@@ -38,7 +38,7 @@ stay readable at [developers.sedumo.com/guides](https://developers.sedumo.com/gu
 
 `skills/sedumo/` is an Agent Skill that teaches Claude how to build on Sedumo (`SKILL.md`, and
 `references/api.md` for the details). The build publishes it at `/skills/sedumo/` and as `/skills/sedumo.zip`; the
-page `/skill` says how to add it.
+page `/skill` says how to add it. After editing the skill, restart `npm run dev` to see the change there.
 
 ## Search
 
