@@ -41,7 +41,8 @@ again so the index is served with the site. The dev server has no index.
 
 ## Deploy
 
-- **Anywhere Node runs:** `npm run build`, then `node build`, or the `Dockerfile`.
+- **Anywhere Node runs:** `npm run build`, then `BODY_SIZE_LIMIT=4M node build` (a PDF sent with a print is bigger
+  than Node's default 512 KB), or the `Dockerfile`, which sets it.
 - **Cloudflare Workers** (how developers.sedumo.com runs): `npm run build:cloudflare`, then `npx wrangler deploy`
   with `wrangler.jsonc`. A copy deploying to its own Cloudflare account changes the name and the route there.
 

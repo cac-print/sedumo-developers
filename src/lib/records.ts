@@ -12,12 +12,16 @@ export function parseTable(text: string, names: string[]): { rows: Row[] } | { e
 	if (lines.length < 2) return { error: 'Give a header row and at least one row of values.' };
 	// Tabs from a spreadsheet, else commas (with "quoted" cells); a header of one column takes each whole line.
 	const separator = lines[0].includes('\t') ? '\t' : lines[0].includes(',') ? ',' : null;
-	const split = (line: string) => (separator === '\t' ? line.split('\t') : separator ? splitCsv(line) : [line]);
+	// One column: the whole line is the cell, without the quotes round it.
+	const split = (line: string) =>
+		separator === '\t' ? line.split('\t') : separator ? splitCsv(line) : [splitCsv(line).join(',')];
 	const header = split(lines[0]).map((h) => h.trim());
 	const unknown = header.filter((h) => h !== 'copies' && !names.includes(h));
 	if (unknown.length > 0) return { error: `Not a field of this label: ${unknown.join(', ')}.` };
 	const rows: Row[] = [];
+	if (unclosed(lines[0])) return { error: 'The header has a quote that isn’t closed.' };
 	for (const [i, line] of lines.slice(1).entries()) {
+		if (separator !== '\t' && unclosed(line)) return { error: `Row ${i + 1}: a quote isn’t closed.` };
 		const cells = split(line);
 		if (cells.length > header.length) return { error: `Row ${i + 1} has more cells than the header.` };
 		const values: Values = {};
@@ -31,6 +35,22 @@ export function parseTable(text: string, names: string[]): { rows: Row[] } | { e
 		rows.push({ values, copies });
 	}
 	return { rows };
+}
+
+/** Whether a line ends inside a quoted cell. */
+function unclosed(line: string): boolean {
+	let quoted = false;
+	let cellStart = true;
+	for (let i = 0; i < line.length; i++) {
+		const c = line[i];
+		if (quoted) {
+			if (c === '"' && line[i + 1] === '"') i++;
+			else if (c === '"') quoted = false;
+		} else if (c === '"' && cellStart) quoted = true;
+		else if (c === ',') cellStart = true;
+		else if (c.trim()) cellStart = false;
+	}
+	return quoted;
 }
 
 /** A line of comma-separated cells; a cell in double quotes may hold commas, and "" is a quote. */
@@ -101,12 +121,14 @@ export function seriesRows(values: Values, count: number, counters: Counter[], m
 /** The field an example table counts up: a serial, lot or batch, else one ending in a number that isn't a barcode
  * number (8 to 14 digits, with a check digit) or a decimal such as a weight. */
 export function countingField(names: string[], examples: Values): string | undefined {
+	const endsInNumber = (name: string) => /\d$/.test(examples[name] ?? '');
 	const counts = (name: string) => {
 		const example = examples[name] ?? '';
-		return /\d$/.test(example) && !/^\d{8,14}$/.test(example) && !/^\d+[.,]\d+$/.test(example);
+		return endsInNumber(name) && !/^\d{8,14}$/.test(example) && !/^\d+[.,]\d+$/.test(example);
 	};
+	// A serial, lot or batch counts whatever its digits (a date lot such as 20261015 too).
 	for (const preferred of ['serial', 'lot', 'batch']) {
-		const name = names.find((n) => n.toLowerCase() === preferred && counts(n));
+		const name = names.find((n) => n.toLowerCase() === preferred && endsInNumber(n));
 		if (name) return name;
 	}
 	return names.find(counts);
@@ -120,7 +142,8 @@ export function exampleTable(names: string[], examples: Values): string {
 		const cells = names.map((name) => {
 			const example = examples[name] ?? '';
 			const value = name === counting ? countUp(example, n) : example;
-			return /[",\t]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+			const flat = value.replace(/\s*\n\s*/g, ' ');
+			return /[",\t]/.test(flat) ? `"${flat.replace(/"/g, '""')}"` : flat;
 		});
 		return [...cells, n === 1 ? '2' : ''].join(',');
 	});

@@ -9,4 +9,7 @@ describe('hooksOf', () => {
 			'made'
 		]);
 	});
+	it('takes spaces round a format, as Sedumo does', () => {
+		expect(hooksOf('^FD{{made | dd.MM.yyyy}}^FS')).toEqual(['made']);
+	});
 });

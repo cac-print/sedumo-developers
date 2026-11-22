@@ -1,3 +1,3 @@
 import { loadLabelExample } from '#lib/server/label-example.ts';
 
-export const load = ({ url }) => loadLabelExample(url, { files: true, printer: 'PDF office printer' });
+export const load = ({ url }) => loadLabelExample(url, { labels: false, printer: 'PDF office printer' });

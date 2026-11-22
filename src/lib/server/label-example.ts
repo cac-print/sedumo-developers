@@ -4,7 +4,16 @@ import { SedumoError } from './sedumo.ts';
 const empty = { printers: [], labels: [], files: [], printerId: null, labelId: null, fileId: null, template: null };
 
 /** What an example starts with: a label or a file, and a printer (by name) when the URL doesn't choose. */
-export type Defaults = { label?: string; file?: string; printer?: string; files?: boolean };
+export type Defaults = {
+	label?: string;
+	file?: string;
+	printer?: string;
+	// What the page uses, so it makes only the calls it needs: the labels and the chosen one's fields, the stored files.
+	labels?: boolean;
+	files?: boolean;
+	// The named file or none, never another one in its place.
+	fileStrict?: boolean;
+};
 
 /**
  * What a label example shows: the printers with their state, the labels, and the chosen label's fields (GET /printers,
@@ -27,7 +36,7 @@ async function fromSedumo(url: URL, defaults: Defaults) {
 	const client = sedumo();
 	const [printers, labels, files] = await Promise.all([
 		client.listPrinters(),
-		client.listLabels(),
+		defaults.labels === false ? Promise.resolve([]) : client.listLabels(),
 		defaults.files ? client.listFiles() : Promise.resolve([])
 	]);
 	const printer =
@@ -40,8 +49,12 @@ async function fromSedumo(url: URL, defaults: Defaults) {
 		labels.find((l) => l.name === (defaults.label ?? 'Product label.template')) ??
 		labels[0] ??
 		null;
-	const file = files.find((f) => f.id === url.searchParams.get('file')) ?? files.find((f) => f.name === defaults.file) ?? files[0] ?? null;
-	const template = label && !defaults.files ? await client.readTemplate(label.id) : null;
+	const file =
+		files.find((f) => f.id === url.searchParams.get('file')) ??
+		files.find((f) => f.name === defaults.file) ??
+		(defaults.fileStrict ? null : files[0]) ??
+		null;
+	const template = label && defaults.labels !== false ? await client.readTemplate(label.id) : null;
 	return {
 		printers: printers.map(({ id, name, language, dpi, status, statusReason, checkStatus, worker }) => ({
 			id,

@@ -30,6 +30,29 @@ export const LIMITS = { copies: 10, labels: 50, records: 50, values: 50, valueLe
 
 const isText = (v: unknown, max: number) => typeof v === 'string' && v.length <= max;
 
+/**
+ * How many labels a file in the request asks for, as far as the demo's limits go: an Oracle XML's <label>s each with
+ * its _QUANTITY (or the document's), a ZPL file's labels (^XA…^XZ) each with its ^PQ quantity. A problem, or the count.
+ */
+export function fileLabels(content: string, kind: 'stream' | 'oracle_xml'): { labels: number } | { problem: string } {
+	const quantities = (text: string, pattern: RegExp) => [...text.matchAll(pattern)].map((m) => Number(m[1]));
+	if (kind === 'oracle_xml') {
+		const root = /<labels\b([^>]*)>/i.exec(content)?.[1] ?? '';
+		const whole = quantities(root, /_QUANTITY\s*=\s*"(\d+)"/gi)[0] ?? 1;
+		const labels = [...content.matchAll(/<label\b([^>]*)>/gi)].map((m) => quantities(m[1], /_QUANTITY\s*=\s*"(\d+)"/gi)[0] ?? whole);
+		if (labels.length > LIMITS.records) return { problem: `At most ${LIMITS.records} labels in an XML on the demo` };
+		if ([whole, ...labels].some((q) => q > LIMITS.copies)) return { problem: `_QUANTITY 1 to ${LIMITS.copies} on the demo printers` };
+		const values = [...content.matchAll(/<variable\b[^>]*>([^<]*)<\/variable>/gi)].map((m) => m[1]);
+		if (values.some((v) => v.length > LIMITS.valueLength)) return { problem: `Values of at most ${LIMITS.valueLength} characters` };
+		return { labels: labels.reduce((sum, q) => sum + q, 0) };
+	}
+	// ZPL: each label with its ^PQ quantity (1 without one).
+	const blocks = content.split(/\^XA/i).slice(1);
+	const each = blocks.map((block) => quantities(block, /\^PQ\s*(\d+)/gi)[0] ?? 1);
+	if (each.some((q) => q > LIMITS.copies)) return { problem: `^PQ 1 to ${LIMITS.copies} on the demo printers` };
+	return { labels: Math.max(1, each.reduce((sum, q) => sum + q, 0)) };
+}
+
 function recordProblem(record: unknown, copiesAllowed: boolean): string | null {
 	if (!record || typeof record !== 'object' || Array.isArray(record)) return 'A record is a set of values';
 	const entries = Object.entries(record).filter(([name]) => !(copiesAllowed && name === 'copies'));
@@ -58,9 +81,22 @@ export function requestProblem(body: unknown): string | null {
 		if (ref.length !== 1 || !['id', 'path', 'sha256'].includes(documentKeys) || !isText(ref[0], LIMITS.idLength))
 			return 'Name one document';
 	}
+	// A file's own labels count against the demo's limits (a PDF's pages don't: its size is the limit).
+	const fromFile =
+		'content' in document && document.encoding !== 'base64' ? fileLabels(document.content as string, xml ? 'oracle_xml' : 'stream') : { labels: 1 };
+	if ('problem' in fromFile) return fromFile.problem;
+	const who = r.onBehalfOf as unknown;
+	if (who !== undefined) {
+		const w = who as Record<string, unknown>;
+		if (!w || typeof w !== 'object' || !isText(w.id, 200) || !isText(w.name, 200)) return 'Who prints: an id and a name of at most 200 characters';
+	}
+	const settings = r.settings as Record<string, unknown> | undefined;
+	if (settings !== undefined && (typeof settings !== 'object' || Object.keys(settings).some((k) => k !== 'darkness' && k !== 'speedMmS')))
+		return 'Print settings: darkness and speedMmS';
 	if (xml) {
 		// An Oracle XML carries its printer and values.
 		if (r.printerId !== undefined && !isText(r.printerId, LIMITS.idLength)) return 'Not a printer id';
+		if (fromFile.labels > LIMITS.labels) return `At most ${LIMITS.labels} labels a print on the demo printers`;
 		return r.data === undefined ? null : 'An Oracle XML carries its own values';
 	}
 	if (!isText(r.printerId, LIMITS.idLength) || !r.printerId) return 'Choose a printer';
@@ -91,6 +127,7 @@ export function requestProblem(body: unknown): string | null {
 			return `1 to ${LIMITS.copies} copies a record on the demo printers`;
 		labels += copies as number;
 	}
+	labels *= fromFile.labels;
 	if (labels > LIMITS.labels) return `At most ${LIMITS.labels} labels a print on the demo printers`;
 	return null;
 }
@@ -99,7 +136,9 @@ export function requestProblem(body: unknown): string | null {
 export function cleanRequest(request: PrintRequest): PrintRequest {
 	const settings = Object.fromEntries(
 		// An emptied number field is null in the browser: left out, as it isn't set.
-		Object.entries(request.settings ?? {}).filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
+		Object.entries(request.settings ?? {}).filter(
+			([name, value]) => (name === 'darkness' || name === 'speedMmS') && typeof value === 'number' && Number.isFinite(value)
+		)
 	);
 	const document = request.document;
 	return {
@@ -109,7 +148,7 @@ export function cleanRequest(request: PrintRequest): PrintRequest {
 				: document,
 		...(request.printerId ? { printerId: request.printerId } : {}),
 		...(request.data ? { data: cleanData(request.data) } : {}),
-		...(request.onBehalfOf?.name ? { onBehalfOf: request.onBehalfOf } : {}),
+		...(request.onBehalfOf?.name ? { onBehalfOf: { id: request.onBehalfOf.id, name: request.onBehalfOf.name } } : {}),
 		...(Object.keys(settings).length ? { settings } : {})
 	};
 }
@@ -126,8 +165,8 @@ export function curlFor(request: PrintRequest, path = '/print', apiUrl = API_URL
 	// A long file (a PDF's base64) is shortened, so the command stays readable; the request sends all of it.
 	const document = request.document;
 	const shown =
-		'content' in document && document.content.length > 600
-			? { ...request, document: { ...document, content: `<${document.encoding === 'base64' ? 'base64 of the file' : 'the file'}, ${Math.round(document.content.length / 1000)} KB>` } }
+		'content' in document && document.encoding === 'base64' && document.content.length > 600
+			? { ...request, document: { ...document, content: `<base64 of the file, ${Math.round(document.content.length / 1000)} KB>` } }
 			: request;
 	const body = JSON.stringify(shown, null, 2).replace(/'/g, `'\\''`);
 	return [

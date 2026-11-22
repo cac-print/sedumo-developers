@@ -6,7 +6,7 @@ export async function deliveryNotePdf(note: DeliveryNote): Promise<Uint8Array> {
 	const { PDFDocument, StandardFonts } = await import('pdf-lib');
 	const pdf = await PDFDocument.create();
 	pdf.setTitle(`Delivery note ${note.number}`);
-	const page = pdf.addPage([595.28, 841.89]);
+	let page = pdf.addPage([595.28, 841.89]);
 	const regular = await pdf.embedFont(StandardFonts.Helvetica);
 	const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
 	// The standard fonts have only WinAnsi's characters: anything else prints as "?".
@@ -14,6 +14,11 @@ export async function deliveryNotePdf(note: DeliveryNote): Promise<Uint8Array> {
 	const printable = (text: string) => [...text].map((c) => (known.has(c.codePointAt(0)!) ? c : '?')).join('');
 	let y = 841.89 - 56;
 	const line = (text: string, size = 11, font = regular, gap = 6) => {
+		// A new page when this one is full, so nothing is cut off.
+		if (y - size < 56) {
+			page = pdf.addPage([595.28, 841.89]);
+			y = 841.89 - 56;
+		}
 		page.drawText(printable(text), { x: 56, y: (y -= size), size, font });
 		y -= gap;
 	};

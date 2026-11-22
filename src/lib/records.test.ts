@@ -9,6 +9,12 @@ describe('parseTable', () => {
 	it('takes each whole line when the header has one column', () => {
 		expect(parseTable('product\nMilk 1 l, 12 x 1 l', ['product'])).toEqual({ rows: [{ values: { product: 'Milk 1 l, 12 x 1 l' }, copies: 1 }] });
 	});
+	it('takes the quotes off a one-column CSV', () => {
+		expect(parseTable('"product"\n"Milk, 1 l"', ['product'])).toEqual({ rows: [{ values: { product: 'Milk, 1 l' }, copies: 1 }] });
+	});
+	it('says when a quote isn’t closed', () => {
+		expect(parseTable('product,lot\n"Milk, 1 l,L1', ['product', 'lot'])).toEqual({ error: 'Row 1: a quote isn’t closed.' });
+	});
 	it('says what’s wrong', () => {
 		expect(parseTable('lot', ['lot'])).toHaveProperty('error');
 		expect(parseTable('nope\nA', ['lot'])).toEqual({ error: 'Not a field of this label: nope.' });
@@ -70,5 +76,7 @@ describe('examples', () => {
 		expect(countingField(Object.keys(pallet), pallet)).toBe('serial');
 		const product = { product: 'Milk', weight: '1.030', best_before: '2026-12-10', lot: 'L2026-10', ean: '3830000000017' };
 		expect(countingField(Object.keys(product), product)).toBe('lot');
+		const dated = { product: 'Milk', lot: '20261015', qty: '48' };
+		expect(countingField(Object.keys(dated), dated)).toBe('lot');
 	});
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanRequest, curlFor, requestProblem, type PrintRequest } from './print-request.ts';
+import { cleanRequest, curlFor, fileLabels, requestProblem, type PrintRequest } from './print-request.ts';
 
 const base = { document: { path: 'Product label.template' }, printerId: 'p1', data: { values: { lot: 'L1' } } };
 
@@ -66,5 +66,33 @@ describe('curlFor', () => {
 	});
 	it('escapes a single quote in a value for the shell', () => {
 		expect(curlFor({ ...base, data: { values: { name: "O'Brien" } } })).toContain(`O'\\''Brien`);
+	});
+});
+
+describe('files sent with the request', () => {
+	const xml = (q: string, labels = 1) =>
+		`<labels _FORMAT="Product label" _PRINTERNAME="ZPL 203 dpi"${q}>${'<label><variable name="a">b</variable></label>'.repeat(labels)}</labels>`;
+	it('counts an Oracle XML’s labels with their quantities', () => {
+		expect(fileLabels(xml(' _QUANTITY="3"', 2), 'oracle_xml')).toEqual({ labels: 6 });
+		expect(fileLabels(xml(' _QUANTITY="5000"'), 'oracle_xml')).toHaveProperty('problem');
+		expect(requestProblem({ document: { content: xml(' _QUANTITY="10"', 6), kind: 'oracle_xml' } })).toMatch(/50 labels/);
+		expect(requestProblem({ document: { content: xml(''), kind: 'oracle_xml' } })).toBeNull();
+	});
+	it('counts a ZPL file’s labels with ^PQ, times the records', () => {
+		expect(fileLabels('^XA^FDa^FS^PQ3^XZ^XA^FDb^FS^XZ', 'stream')).toEqual({ labels: 4 });
+		expect(fileLabels('^XA^PQ9999^XZ', 'stream')).toHaveProperty('problem');
+		const zpl = { content: '^XA^FD{{a}}^FS^PQ10^XZ', kind: 'stream' as const };
+		expect(requestProblem({ document: zpl, printerId: 'p', data: { values: { a: 'x' }, copies: 6 } })).toMatch(/50 labels/);
+	});
+	it('takes who prints and the settings only as the page sends them', () => {
+		expect(requestProblem({ ...base, onBehalfOf: { id: 'a', name: 'x'.repeat(201) } })).toMatch(/Who prints/);
+		expect(requestProblem({ ...base, settings: { anything: 5 } as never })).toMatch(/settings/);
+		const sent = cleanRequest({ ...base, onBehalfOf: { id: 'a', name: 'Ana', extra: 1 } as never, settings: { darkness: 20, other: 3 } as never });
+		expect(sent.onBehalfOf).toEqual({ id: 'a', name: 'Ana' });
+		expect(sent.settings).toEqual({ darkness: 20 });
+	});
+	it('shortens only a base64 file in the curl', () => {
+		expect(curlFor({ document: { content: 'x'.repeat(700), kind: 'stream' }, printerId: 'p' })).toContain('x'.repeat(700));
+		expect(curlFor({ document: { content: 'A'.repeat(700), kind: 'stream', encoding: 'base64' }, printerId: 'p' })).toContain('<base64 of the file');
 	});
 });

@@ -49,7 +49,7 @@
 	const jobId = $derived(answer?.status === 201 ? answer.body.jobId : undefined);
 </script>
 
-{#if problem}<p class="refused">{problem}</p>{/if}
+{#if problem}<p class="refused" role="alert">{problem}</p>{/if}
 {#if preview}<Preview request={sendable} {size} />{/if}
 
 <button class="print" type="button" disabled={!sendable || sending} onclick={print}>{sending ? 'Sending…' : 'Print'}</button>

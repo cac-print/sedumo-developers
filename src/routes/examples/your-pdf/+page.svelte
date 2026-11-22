@@ -25,21 +25,29 @@
 	let answer = $state(null);
 	let lastStatus = $state<unknown>(null);
 
-	// The delivery note, made again 400 ms after the last change.
+	// The delivery note, made again 400 ms after the last change; a build that finishes late never replaces a newer one.
+	let builds = 0;
 	$effect(() => {
 		const current = { ...note };
-		const timer = setTimeout(async () => (made = toBase64(await deliveryNotePdf(current))), 400);
+		const build = ++builds;
+		const timer = setTimeout(async () => {
+			const base64 = toBase64(await deliveryNotePdf(current));
+			if (build === builds) made = base64;
+		}, 400);
 		return () => clearTimeout(timer);
 	});
 
+	let uploads = 0;
 	async function upload(event: Event) {
 		const file = (event.currentTarget as HTMLInputElement).files?.[0];
+		const attempt = ++uploads;
 		tooBig = null;
 		uploaded = null;
 		if (!file) return;
+		// Checked before reading it: base64 is a third bigger than the file.
+		if (file.size > (LIMITS.content * 3) / 4) return (tooBig = `${file.name} is too big for the demo (at most about 1 MB).`);
 		const base64 = toBase64(new Uint8Array(await file.arrayBuffer()));
-		if (base64.length > LIMITS.content) tooBig = `${file.name} is too big for the demo (at most about 1 MB).`;
-		else uploaded = { name: file.name, base64 };
+		if (attempt === uploads) uploaded = { name: file.name, base64 };
 	}
 
 	const content = $derived(source === 'made' ? made : (uploaded?.base64 ?? null));

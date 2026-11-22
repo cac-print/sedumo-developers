@@ -78,7 +78,7 @@ export function sedumoClient(apiUrl: string, token: string, fetchImpl: typeof fe
 			(await call<DocumentSummary[]>('GET', `/documents?q=${encodeURIComponent('.template')}`))
 				.filter((d) => d.name.toLowerCase().endsWith('.template'))
 				.sort((a, b) => a.path.localeCompare(b.path)),
-		/** The files that print as they are (ZPL, PDF): every document that isn't a label. */
+		/** The files that print as they are: ZPL and PDF files (.zpl, .prn, .txt, .pdf). */
 		listFiles: async () =>
 			(await call<DocumentSummary[]>('GET', '/documents'))
 				.filter((d) => /\.(zpl|prn|txt|pdf)$/i.test(d.name))
