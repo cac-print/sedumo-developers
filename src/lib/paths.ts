@@ -28,6 +28,11 @@ export const PATHS: Path[] = [
 		href: '/guides/plant-it'
 	},
 	{
+		title: 'Claude builds it with you',
+		text: 'Add the Sedumo skill to Claude Code or the Claude apps, and Claude writes the integration the way Sedumo works.',
+		href: '/skill'
+	},
+	{
 		title: 'An AI assistant works with your labels',
 		text: 'Connect Claude and other assistants to Sedumo, as you, with only what your role allows.',
 		href: '/guides/ai-assistants'
@@ -36,5 +41,5 @@ export const PATHS: Path[] = [
 
 /** A link to a guide: its page here, or on developers.sedumo.com when this copy was built without the guides. */
 export function guideHref(built: boolean, href: string): string {
-	return built ? href : `https://developers.sedumo.com${href}`;
+	return built || !href.startsWith('/guides') ? href : `https://developers.sedumo.com${href}`;
 }

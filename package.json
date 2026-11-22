@@ -12,8 +12,8 @@
 	},
 	"scripts": {
 		"guides": "node scripts/guides.mjs",
-		"dev": "vite dev",
-		"build": "vite build && node scripts/search-index.mjs && vite build",
+		"dev": "node scripts/skill.mjs && vite dev",
+		"build": "node scripts/skill.mjs && vite build && node scripts/search-index.mjs && vite build",
 		"build:cloudflare": "SEDUMO_ADAPTER=cloudflare npm run build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -27,6 +27,7 @@
 		"@sveltejs/kit": "^3.4.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^24.19.2",
+		"fflate": "^0.8.3",
 		"marked": "^18.2.1",
 		"marked-gfm-heading-id": "^4.1.4",
 		"pagefind": "^1.6.0",

@@ -34,6 +34,12 @@ The guides are Sedumo's manual, which lives in Sedumo's own (private) repository
 `content/guides/` from `SEDUMO_DOCS_DIR`; without it the site builds with a note on the Guides page, and the guides
 stay readable at [developers.sedumo.com/guides](https://developers.sedumo.com/guides). This repo never edits them.
 
+## The Claude skill
+
+`skills/sedumo/` is an Agent Skill that teaches Claude how to build on Sedumo (`SKILL.md`, and
+`references/api.md` for the details). The build publishes it at `/skills/sedumo/` and as `/skills/sedumo.zip`; the
+page `/skill` says how to add it. After editing the skill, restart `npm run dev` to see the change there.
+
 ## Search
 
 `npm run build` builds the site, makes a search index of its pages with [Pagefind](https://pagefind.app), and builds
