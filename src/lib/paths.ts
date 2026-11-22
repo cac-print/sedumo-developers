@@ -28,13 +28,13 @@ export const PATHS: Path[] = [
 		href: '/guides/plant-it'
 	},
 	{
-		title: 'Claude builds it with you',
-		text: 'Add the Sedumo skill to Claude Code or the Claude apps, and Claude writes the integration the way Sedumo works.',
+		title: 'An AI coding assistant writes it with you',
+		text: 'Add the Sedumo skill to Claude Code, Codex, Cursor, Gemini CLI, Copilot or Antigravity, and it writes your integration the way Sedumo works.',
 		href: '/skill'
 	},
 	{
-		title: 'An AI assistant works with your labels',
-		text: 'Connect Claude and other assistants to Sedumo, as you, with only what your role allows.',
+		title: 'An AI assistant designs your labels and forms',
+		text: 'Connect Claude or another assistant to your Sedumo account: it makes and changes labels and print forms as you, with only what your role allows.',
 		href: '/guides/ai-assistants'
 	}
 ];

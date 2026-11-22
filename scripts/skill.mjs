@@ -1,5 +1,5 @@
-// Copies the Claude skill (skills/sedumo/) into static/skills/ (not in git), so the site serves its files and a zip of
-// the folder to upload in the Claude apps: /skills/sedumo/SKILL.md, /skills/sedumo.zip. Runs before every build.
+// Copies the Sedumo skill (skills/sedumo/) into static/skills/ (not in git), so the site serves its files and a zip of
+// the folder to install or to upload in the Claude apps: /skills/sedumo/SKILL.md, /skills/sedumo.zip. Runs before every build.
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync, cpSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { zipSync } from 'fflate';
@@ -23,4 +23,4 @@ const walk = (dir) => {
 };
 walk(source);
 writeFileSync(join(out, 'sedumo.zip'), zipSync(files, { level: 9 }));
-console.log(`Claude skill: ${Object.keys(files).length} files, ${out}/sedumo.zip`);
+console.log(`Sedumo skill: ${Object.keys(files).length} files, ${out}/sedumo.zip`);

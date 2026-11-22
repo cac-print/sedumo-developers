@@ -28,7 +28,7 @@ export const GUIDES: Guide[] = [
 		slug: 'ai-assistants',
 		file: 'ai-assistants.md',
 		title: 'AI assistants',
-		summary: 'Connect Claude and other assistants to Sedumo, what they can do, and keeping it safe.'
+		summary: 'Connect Claude or another assistant to your Sedumo account to design labels and forms, what it can do, and keeping it safe.'
 	},
 	{
 		slug: 'limits',
