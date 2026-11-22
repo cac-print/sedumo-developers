@@ -74,7 +74,7 @@ function printer(name: string): string {
 const run = Date.now().toString(36);
 const pdfFile = 'setup/files/packing-list.pdf';
 // Every kind of request a page makes, with text that needs escaping in some language: quotes, $, \, a backquote, ä,
-// a byte-order mark (pasted from a spreadsheet) and a line separator.
+// curly quotes, Ruby's #{, a byte-order mark (pasted from a spreadsheet) and a line separator.
 type Case = { name: string; request: PrintRequest; headers?: Record<string, string>; pdf?: string };
 const CASES: Case[] = [
 	{
@@ -82,7 +82,7 @@ const CASES: Case[] = [
 		request: {
 			document: { path: 'Product label.template' },
 			printerId: printer('ZPL 203 dpi'),
-			data: { values: { product: 'Butter 250 g', weight: '0.250', best_before: '2026-12-31', lot: `\ufeffL-$1 \\ O'Neil "x" \`y\` ä\u2028`, ean: '3830001234567' } },
+			data: { values: { product: 'Butter 250 g', weight: '0.250', best_before: '2026-12-31', lot: `\ufeffL-$1 \\ O'Neil "x" \`y\` ä č „P“ “q” #{x} #@a\u2028`, ean: '3830001234567' } },
 			onBehalfOf: { id: 'code-check', name: 'Code check' }
 		},
 		headers: { 'Idempotency-Key': `code-check-${run}` }

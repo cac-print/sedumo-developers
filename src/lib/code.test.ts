@@ -83,6 +83,36 @@ describe('codeFor', () => {
 		expect(JSON.parse(body)).toEqual(label);
 	});
 
+	it('keeps the JSON exactly in VB.NET, PowerShell and VBA, curly quotes and letters beyond ASCII too', () => {
+		const odd: PrintRequest = { ...label, data: { values: { product: 'Maslo „Planika“ “x” ＂', lot: 'č ž ä 😀 #{x}' } } };
+		const vb = codeFor('vbnet', odd);
+		expect(vb).not.toMatch(/[“”＂]/);
+		const vbBody = [...vb.matchAll(/^ {12}"(.*)"(?: &)?$/gm)].map((m) => m[1].replace(/""/g, '"')).join('');
+		expect(JSON.parse(vbBody)).toEqual(odd);
+		const ps = /\$body = @'\n([\s\S]*?)\n'@/.exec(codeFor('powershell', odd))?.[1] ?? '';
+		expect(ps).toMatch(/^[\x20-\x7e\n]*$/);
+		expect(JSON.parse(ps)).toEqual(odd);
+		const vba = codeFor('vba', odd);
+		expect(vba.split('\n').filter((line) => line.includes('s = s & ')).join('')).toMatch(/^[\x20-\x7e]*$/);
+		const vbaBody = [...vba.matchAll(/^ {4}s = s & "(.*)"$/gm)].map((m) => m[1].replace(/""/g, '"')).join('');
+		expect(JSON.parse(vbaBody)).toEqual(odd);
+	});
+
+	it('splits a long VBA body into functions of at most 200 lines', () => {
+		const long: PrintRequest = { ...label, document: { content: 'x'.repeat(50_000), kind: 'stream', encoding: 'text' } };
+		const vba = codeFor('vba', long);
+		const functions = vba.split(/^Private Function RequestBody\d+\(\)/m).slice(1);
+		expect(functions.length).toBeGreaterThan(2);
+		for (const f of functions) expect((f.match(/ s = s & /g) ?? []).length).toBeLessThanOrEqual(200);
+		const body = [...vba.matchAll(/^ {4}s = s & "(.*)"$/gm)].map((m) => m[1].replace(/""/g, '"')).join('');
+		expect(JSON.parse(body)).toEqual(long);
+	});
+
+	it('keeps Ruby from reading #{ as code, and a lone surrogate from stopping it', () => {
+		const ruby = codeFor('ruby', { ...label, data: { values: { lot: '#{x} #@a \ud83d' } } });
+		expect(ruby).toContain('"\\#{x} \\#@a \\ufffd"');
+	});
+
 	it('keeps ABAP’s lines short and its backquotes doubled', () => {
 		const long: PrintRequest = { ...label, data: { values: { note: '`'.repeat(400) } } };
 		const code = codeFor('abap', long);

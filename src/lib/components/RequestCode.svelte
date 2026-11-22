@@ -46,6 +46,7 @@
 				Only the language’s own library; our checks run it and compare what it sends with the page’s request.
 			{/if}
 			{#if pdf && !app}It reads the PDF from <code>{PDF_FILE}</code> next to it.{/if}
+			{#if pdf && language === 'vba'}It reads the PDF from <code>{PDF_FILE}</code> in the workbook’s folder.{/if}
 		</p>
 	{/if}
 </div>
