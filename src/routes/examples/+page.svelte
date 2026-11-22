@@ -6,14 +6,16 @@
 
 <h1>Examples</h1>
 <p class="lead">
-	Every way to print, a page each. Each one prints for real on Sedumo’s demo printers and shows the request it sends.
+	Every way to print, a page each, with the request it sends. Most print for real on Sedumo’s demo printers; the two
+	that run on a plant’s own network show their code.
 </p>
 {#each GROUPS as group (group)}
 	<h2>{group}</h2>
 	<ul class="list">
 		{#each EXAMPLES.filter((e) => e.group === group) as example (example.slug)}
 			<li>
-				{#if example.ready}<a href="/examples/{example.slug}">{example.title}</a>{:else}<strong>{example.title}</strong>
+				{#if example.ready}<a href="/examples/{example.slug}">{example.title}</a>{#if example.live === false}
+						<em>code only</em>{/if}{:else}<strong>{example.title}</strong>
 					<em>coming soon</em>{/if}
 				<span>{example.summary}</span>
 			</li>

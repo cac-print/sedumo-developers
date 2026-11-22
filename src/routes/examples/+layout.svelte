@@ -15,7 +15,9 @@
 						{#if example.ready}
 							<a
 								href="/examples/{example.slug}"
-								aria-current={page.url.pathname === `/examples/${example.slug}` ? 'page' : undefined}>{example.title}</a
+								aria-current={page.url.pathname === `/examples/${example.slug}` ? 'page' : undefined}
+								>{example.title}{#if example.live === false}
+									<small><span class="hidden">, </span>code only</small>{/if}</a
 							>
 						{:else}
 							<span title="Coming soon">{example.title}</span>
@@ -67,6 +69,21 @@
 		border-left: 2px solid var(--line);
 		text-decoration: none;
 		color: var(--ink);
+	}
+	nav a small {
+		margin-left: 0.35rem;
+		font-size: 0.7rem;
+		color: var(--muted);
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		padding: 0 0.25rem;
+	}
+	.hidden {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip-path: inset(50%);
 	}
 	nav span {
 		color: var(--muted);
