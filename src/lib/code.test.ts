@@ -66,6 +66,15 @@ describe('codeFor', () => {
 		expect(code).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
 	});
 
+	it('keeps the JSON exactly in X++ and AL', () => {
+		const xpp = /str request = @'([\s\S]*?)';/.exec(codeFor('xpp', label))?.[1];
+		expect(xpp).not.toContain("'");
+		expect(JSON.parse(xpp ?? '')).toEqual(label);
+		const al = codeFor('al', label);
+		const body = [...al.matchAll(/^ {12}'(.*)'(?: \+|;)$/gm)].map((m) => m[1].replace(/''/g, "'")).join('');
+		expect(JSON.parse(body)).toEqual(label);
+	});
+
 	it('keeps ABAP’s lines short and its backquotes doubled', () => {
 		const long: PrintRequest = { ...label, data: { values: { note: '`'.repeat(400) } } };
 		const code = codeFor('abap', long);
