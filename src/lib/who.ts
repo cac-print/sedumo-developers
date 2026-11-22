@@ -6,7 +6,7 @@ const KEY = 'sedumo-examples-who';
 export function loadWho(): Who {
 	try {
 		const kept = JSON.parse(localStorage.getItem(KEY) ?? 'null') as Who | null;
-		if (kept?.id) return kept;
+		if (typeof kept?.id === 'string' && kept.id) return { id: kept.id, name: typeof kept.name === 'string' ? kept.name : '' };
 	} catch {
 		// no storage: a new id each visit
 	}
@@ -21,4 +21,4 @@ export function saveWho(who: Who) {
 	}
 }
 
-export const onBehalfOf = (who: Who) => (who.name.trim() ? { id: who.id, name: who.name.trim() } : undefined);
+export const onBehalfOf = (who: Who) => ((who.name ?? '').trim() ? { id: who.id, name: who.name.trim() } : undefined);

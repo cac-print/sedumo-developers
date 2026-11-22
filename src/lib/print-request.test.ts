@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanRequest, curlFor, requestProblem } from './print-request.ts';
+import { cleanRequest, curlFor, requestProblem, type PrintRequest } from './print-request.ts';
 
 const base = { document: { path: 'Product label.template' }, printerId: 'p1', data: { values: { lot: 'L1' } } };
 
@@ -36,6 +36,16 @@ describe('requestProblem', () => {
 		expect(requestProblem({ ...base, data: { values: { a: 'x'.repeat(501) } } })).toMatch(/characters/);
 		expect(requestProblem({ ...base, document: { id: 'a', path: 'b' } })).toMatch(/one document/);
 		expect(requestProblem('x')).toMatch(/Not a print request/);
+	});
+	it('takes only Sedumo’s data shapes, and values as a set of values', () => {
+		expect(requestProblem({ ...base, data: { records: [{ lot: 'A' }], changes: [{ lot: 'B' }] } })).toMatch(/data is/);
+		expect(requestProblem({ ...base, data: { values: {}, extra: 1 } })).toMatch(/data is/);
+		expect(requestProblem({ ...base, data: { values: null } })).toBe('No values');
+		expect(requestProblem({ ...base, data: { values: 'abc' } })).toBe('No values');
+	});
+	it('sends on only the checked parts of the data', () => {
+		const sneaky = { ...base, data: { common: { lot: 'L' }, changes: [{ serial: '1' }], extra: 'x' } } as unknown as PrintRequest;
+		expect(cleanRequest(sneaky).data).toEqual({ common: { lot: 'L' }, changes: [{ serial: '1' }] });
 	});
 	it('counts the labels of every record against the demo’s limit', () => {
 		const records = Array.from({ length: 6 }, () => ({ lot: 'L', copies: 10 }));

@@ -41,9 +41,17 @@ export function requestProblem(body: unknown): string | null {
 	if (ref.length !== 1 || !isText(ref[0], LIMITS.idLength)) return 'Name one document';
 	if (r.printerId.length > LIMITS.idLength) return 'Not a printer id';
 	const data = (r.data ?? null) as Record<string, unknown> | null;
-	if (!data || typeof data !== 'object') return 'No data';
-	const many = (data.records ?? data.changes) as unknown;
-	const records: unknown[] = 'values' in data ? [{ ...(data.values as object), copies: data.copies }] : Array.isArray(many) ? many : [];
+	if (!data || typeof data !== 'object' || Array.isArray(data)) return 'No data';
+	// One of Sedumo's three shapes, and nothing else.
+	const keys = Object.keys(data).sort().join(',');
+	if (!['values', 'copies,values', 'records', 'changes', 'changes,common'].includes(keys))
+		return 'The data is values (and copies), records, or common and changes';
+	const isObject = (v: unknown) => !!v && typeof v === 'object' && !Array.isArray(v);
+	if ('values' in data && !isObject(data.values)) return 'No values';
+	const many = data.records ?? data.changes;
+	if (!('values' in data) && !Array.isArray(many)) return 'Records are a list';
+	const records: unknown[] =
+		'values' in data ? [{ ...(data.values as object), ...(data.copies === undefined ? {} : { copies: data.copies }) }] : (many as unknown[]);
 	if (records.length === 0) return 'No values';
 	if (records.length > LIMITS.records) return `At most ${LIMITS.records} records on the demo printers`;
 	if (data.common !== undefined) {
@@ -73,10 +81,17 @@ export function cleanRequest(request: PrintRequest): PrintRequest {
 	return {
 		document: request.document,
 		printerId: request.printerId,
-		data: 'values' in data ? (data.copies && data.copies > 1 ? { values: data.values, copies: data.copies } : { values: data.values }) : data,
+		data: cleanData(data),
 		...(request.onBehalfOf?.name ? { onBehalfOf: request.onBehalfOf } : {}),
 		...(Object.keys(settings).length ? { settings } : {})
 	};
+}
+
+/** Only the parts of Sedumo's three shapes, rebuilt, so nothing else from the browser goes on. */
+function cleanData(data: PrintData): PrintData {
+	if ('values' in data) return data.copies && data.copies > 1 ? { values: data.values, copies: data.copies } : { values: data.values };
+	if ('records' in data) return { records: data.records };
+	return data.common ? { common: data.common, changes: data.changes } : { changes: data.changes };
 }
 
 /** The request as curl prints it, with the token from $SEDUMO_TOKEN. */

@@ -10,13 +10,15 @@ export type ManyData = { records: CopiedRecord[] } | { common?: Values; changes:
 export function parseTable(text: string, names: string[]): { rows: Row[] } | { error: string } {
 	const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
 	if (lines.length < 2) return { error: 'Give a header row and at least one row of values.' };
-	const separator = lines[0].includes('\t') ? '\t' : ',';
-	const header = lines[0].split(separator).map((h) => h.trim());
+	// Tabs from a spreadsheet, else commas (with "quoted" cells); a header of one column takes each whole line.
+	const separator = lines[0].includes('\t') ? '\t' : lines[0].includes(',') ? ',' : null;
+	const split = (line: string) => (separator === '\t' ? line.split('\t') : separator ? splitCsv(line) : [line]);
+	const header = split(lines[0]).map((h) => h.trim());
 	const unknown = header.filter((h) => h !== 'copies' && !names.includes(h));
 	if (unknown.length > 0) return { error: `Not a field of this label: ${unknown.join(', ')}.` };
 	const rows: Row[] = [];
 	for (const [i, line] of lines.slice(1).entries()) {
-		const cells = line.split(separator);
+		const cells = split(line);
 		if (cells.length > header.length) return { error: `Row ${i + 1} has more cells than the header.` };
 		const values: Values = {};
 		let copies = 1;
@@ -29,6 +31,25 @@ export function parseTable(text: string, names: string[]): { rows: Row[] } | { e
 		rows.push({ values, copies });
 	}
 	return { rows };
+}
+
+/** A line of comma-separated cells; a cell in double quotes may hold commas, and "" is a quote. */
+function splitCsv(line: string): string[] {
+	const cells: string[] = [];
+	let cell = '';
+	let quoted = false;
+	for (let i = 0; i < line.length; i++) {
+		const c = line[i];
+		if (quoted) {
+			if (c === '"' && line[i + 1] === '"') (cell += '"'), i++;
+			else if (c === '"') quoted = false;
+			else cell += c;
+		} else if (c === '"' && cell.trim() === '') (cell = ''), (quoted = true);
+		else if (c === ',') cells.push(cell), (cell = '');
+		else cell += c;
+	}
+	cells.push(cell);
+	return cells;
 }
 
 const withCopies = (values: Values, copies: number): CopiedRecord => (copies > 1 ? { ...values, copies } : values);
@@ -56,35 +77,54 @@ export type Counter = { name: string; from: number; step: number; every: number;
 
 export function counterValue(counter: Counter, label: number): string {
 	const value = counter.from + counter.step * Math.floor(label / Math.max(1, counter.every));
-	return String(value).padStart(counter.width, '0');
+	// The zeros go after a minus sign: -1 with 4 digits is -0001.
+	return (value < 0 ? '-' : '') + String(Math.abs(value)).padStart(counter.width, '0');
 }
 
-/** `count` labels of one record with counters, as rows: labels in a row that come out the same are one row with copies. */
-export function seriesRows(values: Values, count: number, counters: Counter[]): Row[] {
+/**
+ * `count` labels of one record with counters, as rows: labels in a row that come out the same are one row with copies,
+ * at most `maxCopies` a row.
+ */
+export function seriesRows(values: Values, count: number, counters: Counter[], maxCopies = Infinity): Row[] {
 	const rows: Row[] = [];
 	let key = '';
 	for (let label = 0; label < count; label++) {
 		const counted = Object.fromEntries(counters.map((c) => [c.name, counterValue(c, label)]));
 		const next = JSON.stringify(counted);
-		if (rows.length > 0 && next === key) rows[rows.length - 1].copies++;
+		if (rows.length > 0 && next === key && rows[rows.length - 1].copies < maxCopies) rows[rows.length - 1].copies++;
 		else rows.push({ values: { ...values, ...counted }, copies: 1 });
 		key = next;
 	}
 	return rows;
 }
 
-/** An example table from the label's example values: three records, the last number counting up, the second twice. */
+/** The field an example table counts up: a serial, lot or batch, else one ending in a number that isn't a barcode
+ * number (8 to 14 digits, with a check digit) or a decimal such as a weight. */
+export function countingField(names: string[], examples: Values): string | undefined {
+	const counts = (name: string) => {
+		const example = examples[name] ?? '';
+		return /\d$/.test(example) && !/^\d{8,14}$/.test(example) && !/^\d+[.,]\d+$/.test(example);
+	};
+	for (const preferred of ['serial', 'lot', 'batch']) {
+		const name = names.find((n) => n.toLowerCase() === preferred && counts(n));
+		if (name) return name;
+	}
+	return names.find(counts);
+}
+
+/** An example table from the label's example values: three records, one field counting up, the second twice. */
 export function exampleTable(names: string[], examples: Values): string {
 	if (names.length === 0) return '';
-	const counting = names.find((name) => /\d$/.test(examples[name] ?? ''));
+	const counting = countingField(names, examples);
 	const rows = [0, 1, 2].map((n) => {
 		const cells = names.map((name) => {
 			const example = examples[name] ?? '';
-			return name === counting ? countUp(example, n) : example;
+			const value = name === counting ? countUp(example, n) : example;
+			return /[",\t]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 		});
-		return [...cells, n === 1 ? '2' : ''].join('\t');
+		return [...cells, n === 1 ? '2' : ''].join(',');
 	});
-	return [[...names, 'copies'].join('\t'), ...rows].join('\n');
+	return [[...names, 'copies'].join(','), ...rows].join('\n');
 }
 
 /** The last number in a value, counted up by n, keeping its width ("L0007" → "L0008"). */
